@@ -1,0 +1,42 @@
+# =============================================================================
+# Ingress — expose API ผ่าน external load balancer
+# =============================================================================
+# ⚠️  Template — ต้องแก้ host และ TLS ก่อนใช้งานจริง
+# รองรับ NGINX Ingress Controller (ปรับ annotations ตาม controller ที่ใช้)
+# =============================================================================
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: anc-portal-api
+  namespace: anc-portal
+  labels:
+    app.kubernetes.io/name: anc-portal-api
+    app.kubernetes.io/component: api
+    app.kubernetes.io/part-of: anc-portal
+  annotations:
+    # NGINX Ingress Controller
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "30"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "30"
+    # Rate limiting (ปรับตามความเหมาะสม)
+    nginx.ingress.kubernetes.io/limit-rps: "50"
+    # CORS — ควบคุมที่ app level แล้ว ไม่ต้องเปิดที่ Ingress
+    # SSL redirect
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - api.anc-portal.example.com    # ⚠️ เปลี่ยนเป็น domain จริง
+      secretName: anc-portal-tls         # ⚠️ สร้าง TLS secret หรือใช้ cert-manager
+  rules:
+    - host: api.anc-portal.example.com   # ⚠️ เปลี่ยนเป็น domain จริง
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: anc-portal-api
+                port:
+                  name: http

@@ -1,0 +1,44 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/open-telemetry/opentelemetry-collector/main/cmd/otelcorecol/builder-config.yaml
+# OpenTelemetry Collector — pipeline configuration
+# รับ OTLP/HTTP จาก Go app แล้ว forward ไป Tempo (traces) + Prometheus (metrics)
+#
+# รองรับ ${ENV} syntax — ค่า inject ผ่าน docker-compose environment
+
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: "0.0.0.0:4318"
+
+processors:
+  batch:
+    timeout: ${env:OTEL_BATCH_TIMEOUT}
+    send_batch_size: ${env:OTEL_BATCH_SIZE}
+
+exporters:
+  # >> ส่ง traces ไป Grafana Tempo ผ่าน OTLP/HTTP
+  otlphttp/tempo:
+    endpoint: "http://tempo:4318"
+    tls:
+      insecure: true
+
+  # >> ส่ง metrics ไป Prometheus ผ่าน remote write
+  prometheusremotewrite:
+    endpoint: "http://prometheus:9090/api/v1/write"
+    tls:
+      insecure: true
+
+  # >> Debug logging (dev only)
+  debug:
+    verbosity: basic
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlphttp/tempo, debug]
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [prometheusremotewrite, debug]

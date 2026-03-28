@@ -1,0 +1,42 @@
+# One-time Job: รัน database migration ก่อน deploy API
+# Usage: kubectl apply -f migrate-job.yaml
+# ดู log: kubectl logs -n anc-portal job/anc-portal-migrate
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: anc-portal-migrate
+  namespace: anc-portal
+  labels:
+    app.kubernetes.io/name: anc-portal-migrate
+    app.kubernetes.io/component: migration
+    app.kubernetes.io/part-of: anc-portal
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 300
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: anc-portal-migrate
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: migrate
+          image: ghcr.io/onizukazaza/anc-portal-be-fake:latest
+          command: ["./migrate"]
+          args: ["--env", "staging", "--action", "up"]
+          envFrom:
+            - configMapRef:
+                name: anc-portal-config
+            - secretRef:
+                name: anc-portal-secret
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          securityContext:
+            runAsNonRoot: true
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false

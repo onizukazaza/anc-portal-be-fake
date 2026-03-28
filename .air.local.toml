@@ -1,0 +1,74 @@
+
+# =========================================
+# 🛠 Air Local Config (Development)
+# =========================================
+
+# โหลด environment จาก .env.local
+env_files = [".env.local"]
+
+# Root project
+root = "."
+tmp_dir = "tmp"
+testdata_dir = "testdata"
+
+# =========================================
+# 🔨 Build Settings
+# =========================================
+[build]
+
+  # 🔥 main.go อยู่ที่ cmd/api
+  cmd = "go build -o ./tmp/main.exe ./cmd/api"
+
+  # ✅ ใช้ entrypoint แทน bin (Air version ใหม่)
+  entrypoint = ["./tmp/main.exe"]
+
+  # delay ก่อน rebuild (ms)
+  delay = 1000
+
+  # file ที่ watch
+  include_ext = ["go", "tpl", "tmpl", "html"]
+
+  # folder ที่ไม่ต้อง watch
+  exclude_dir = ["assets", "tmp", "vendor", "testdata"]
+
+  # ไม่ rebuild test
+  exclude_regex = ["_test.go"]
+
+  # log build error
+  log = "build-errors.log"
+
+# =========================================
+# 🎨 Color Output
+# =========================================
+[color]
+  main = "magenta"
+  watcher = "cyan"
+  build = "yellow"
+  runner = "green"
+
+# =========================================
+# 📜 Log Settings
+# =========================================
+[log]
+  time = false
+  main_only = false
+  silent = false
+
+# =========================================
+# ⚙ Misc
+# =========================================
+[misc]
+  clean_on_exit = false
+
+# =========================================
+# 🌐 Proxy (ไม่ใช้)
+# =========================================
+[proxy]
+  enabled = false
+
+# =========================================
+# 🖥 Screen
+# =========================================
+[screen]
+  clear_on_rebuild = false
+  keep_scroll = true

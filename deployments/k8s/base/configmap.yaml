@@ -1,0 +1,55 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: anc-portal-config
+  namespace: anc-portal
+  labels:
+    app.kubernetes.io/part-of: anc-portal
+data:
+  # ── App ──
+  STAGE_STATUS: "staging"
+  SERVER_PORT: "20000"
+  SERVER_BODY_LIMIT: "10485760"
+  SERVER_TIMEOUT: "30s"
+  SERVER_ALLOW_ORIGINS: "*"
+
+  # ── Database (non-secret) ──
+  DB_HOST: "postgresql.anc-portal.svc.cluster.local"
+  DB_PORT: "5432"
+  DB_NAME: "anc_portal"
+  DB_SSL_MODE: "require"
+  DB_SCHEMA: "public"
+  DB_MAX_CONNS: "20"
+  DB_MIN_CONNS: "5"
+  DB_MAX_CONN_LIFETIME: "30m"
+  DB_MAX_CONN_IDLE_TIME: "5m"
+  DB_CONNECT_TIMEOUT: "10s"
+  DB_STATEMENT_TIMEOUT: "30s"
+
+  # ── Redis ──
+  REDIS_ENABLED: "true"
+  REDIS_HOST: "redis.anc-portal.svc.cluster.local"
+  REDIS_PORT: "6379"
+  REDIS_DB: "0"
+  REDIS_KEY_PREFIX: "anc:"
+
+  # ── Local Cache (otter) ──
+  LOCAL_CACHE_ENABLED: "true"
+  LOCAL_CACHE_MAX_SIZE: "10000"
+  LOCAL_CACHE_TTL: "5m"
+
+  # ── Kafka ──
+  KAFKA_ENABLED: "true"
+  KAFKA_BROKERS: "kafka.anc-portal.svc.cluster.local:9092"
+  KAFKA_TOPIC: "anc-portal-events"
+  KAFKA_GROUP_ID: "anc-portal-worker"
+
+  # ── OTel ──
+  OTEL_ENABLED: "true"
+  OTEL_SERVICE_NAME: "anc-portal-be"
+  OTEL_ENV: "staging"
+  OTEL_SAMPLE_RATIO: "0.1"
+  OTEL_EXPORTER_URL: "http://otel-collector.observability.svc.cluster.local:4318"
+
+  # ── Swagger ──
+  SWAGGER_ENABLED: "false"

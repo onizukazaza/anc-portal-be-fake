@@ -1,0 +1,169 @@
+# =============================================================================
+# CD — Deploy to Production
+# =============================================================================
+# Trigger: push tag v* (เช่น v1.0.0) หรือ manual dispatch
+# Guard:   environment "production" ต้อง manual approval ใน GitHub Settings
+# Flow:    migrate job → deploy API + Worker → verify rollout → verify pods
+# =============================================================================
+name: Deploy Production
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Image tag to deploy (e.g. v1.0.0 or short SHA)"
+        required: true
+        type: string
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  KUBE_NAMESPACE: anc-portal
+  OVERLAY_DIR: deployments/k8s/overlays/production
+  API_IMAGE: ghcr.io/${{ github.repository }}
+  WORKER_IMAGE: ghcr.io/${{ github.repository }}-worker
+
+jobs:
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    environment:
+      name: production             # ← ต้องตั้ง protection rules + required reviewers ใน GitHub
+      url: https://api.portal.anc.co.th/healthz
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Determine image tag
+        id: tag
+        run: |
+          if [ -n "${{ inputs.image_tag }}" ]; then
+            TAG="${{ inputs.image_tag }}"
+          else
+            TAG="${GITHUB_REF_NAME}"
+          fi
+          echo "image_tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "Deploying tag: ${TAG}"
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Configure kubeconfig
+        run: |
+          mkdir -p "$HOME/.kube"
+          echo "${{ secrets.KUBE_CONFIG_PRODUCTION }}" | base64 -d > "$HOME/.kube/config"
+          chmod 600 "$HOME/.kube/config"
+
+      # ─── Pre-flight: verify image exists ───
+      - name: Verify image exists in registry
+        run: |
+          echo ">> Checking if image tag exists: ${{ steps.tag.outputs.image_tag }}"
+          docker manifest inspect ${{ env.API_IMAGE }}:${{ steps.tag.outputs.image_tag }} > /dev/null 2>&1 \
+            || { echo "::error::Image ${{ env.API_IMAGE }}:${{ steps.tag.outputs.image_tag }} not found in registry"; exit 1; }
+          echo "Image verified"
+        env:
+          DOCKER_CLI_EXPERIMENTAL: enabled
+
+      # ─── Step 1: Database Migration ───
+      - name: Run database migration
+        run: |
+          echo ">> Cleaning up previous migration job..."
+          kubectl delete job -n ${{ env.KUBE_NAMESPACE }} \
+            -l app.kubernetes.io/component=migration \
+            --ignore-not-found
+
+          echo ">> Applying migration with tag: ${{ steps.tag.outputs.image_tag }}"
+          cd ${{ env.OVERLAY_DIR }}
+          kustomize edit set image \
+            ghcr.io/onizukazaza/anc-portal-be-fake=${{ env.API_IMAGE }}:${{ steps.tag.outputs.image_tag }} \
+            ghcr.io/anc-portal/anc-portal-worker=${{ env.WORKER_IMAGE }}:${{ steps.tag.outputs.image_tag }}
+
+          kustomize build . \
+            | kubectl apply -f - \
+              -l app.kubernetes.io/component=migration
+
+          echo ">> Waiting for migration to complete (timeout 180s)..."
+          kubectl wait --for=condition=complete job \
+            -n ${{ env.KUBE_NAMESPACE }} \
+            -l app.kubernetes.io/component=migration \
+            --timeout=180s
+
+          echo "Migration completed"
+
+      # ─── Step 2: Deploy API + Worker ───
+      - name: Deploy application
+        run: |
+          cd ${{ env.OVERLAY_DIR }}
+          kustomize build . | kubectl apply -f -
+
+      # ─── Step 3: Wait for Rollout ───
+      - name: Wait for API rollout
+        run: |
+          kubectl rollout status deployment \
+            -n ${{ env.KUBE_NAMESPACE }} \
+            -l app.kubernetes.io/component=api \
+            --timeout=300s
+
+      - name: Wait for Worker rollout
+        run: |
+          kubectl rollout status deployment \
+            -n ${{ env.KUBE_NAMESPACE }} \
+            -l app.kubernetes.io/component=worker \
+            --timeout=300s
+
+      # ─── Step 4: Post-deploy Verification ───
+      - name: Verify pods
+        run: |
+          echo ">> Verifying all pods are Running..."
+          NOT_RUNNING=$(kubectl get pods -n ${{ env.KUBE_NAMESPACE }} \
+            -l app.kubernetes.io/part-of=anc-portal \
+            --no-headers | grep -v Running | grep -v Completed || true)
+
+          if [ -n "$NOT_RUNNING" ]; then
+            echo "::warning::Some pods not in Running state:"
+            echo "$NOT_RUNNING"
+          fi
+
+          echo ">> Pod status:"
+          kubectl get pods -n ${{ env.KUBE_NAMESPACE }} \
+            -l app.kubernetes.io/part-of=anc-portal
+
+      # ─── Summary ───
+      - name: Deployment summary
+        if: always()
+        run: |
+          echo "## Production Deployment" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Tag:** \`${{ steps.tag.outputs.image_tag }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Status:** ${{ job.status }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Triggered by:** ${{ github.actor }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "### Running Pods" >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            kubectl get pods -n ${{ env.KUBE_NAMESPACE }} \
+              -l app.kubernetes.io/part-of=anc-portal \
+              -o wide --no-headers 2>/dev/null || echo "Could not fetch pods"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      # ─── Notifications ───
+      - name: Notify success (Discord)
+        if: success() && vars.DISCORD_WEBHOOK_URL != ''
+        run: |
+          curl -sf -H "Content-Type: application/json" \
+            -d "{\"embeds\":[{\"title\":\"✅ Production Deployed\",\"color\":3066993,\"fields\":[{\"name\":\"Tag\",\"value\":\"\`${{ steps.tag.outputs.image_tag }}\`\",\"inline\":true},{\"name\":\"Author\",\"value\":\"${{ github.actor }}\",\"inline\":true}],\"url\":\"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\",\"footer\":{\"text\":\"ANC Portal CD\"}}]}" \
+            "${{ vars.DISCORD_WEBHOOK_URL }}" || true
+
+      - name: Notify failure (Discord)
+        if: failure() && vars.DISCORD_WEBHOOK_URL != ''
+        run: |
+          curl -sf -H "Content-Type: application/json" \
+            -d "{\"embeds\":[{\"title\":\"❌ Production Deploy Failed\",\"color\":15158332,\"fields\":[{\"name\":\"Tag\",\"value\":\"\`${{ steps.tag.outputs.image_tag }}\`\",\"inline\":true},{\"name\":\"Author\",\"value\":\"${{ github.actor }}\",\"inline\":true}],\"url\":\"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\",\"footer\":{\"text\":\"ANC Portal CD\"}}]}" \
+            "${{ vars.DISCORD_WEBHOOK_URL }}" || true

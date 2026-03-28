@@ -1,0 +1,15 @@
+# PodDisruptionBudget — ป้องกัน disruption ระหว่าง node drain / cluster upgrade
+# ให้มี pod พร้อมใช้งานอย่างน้อย 1 ตัวเสมอ
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: anc-portal-api
+  namespace: anc-portal
+  labels:
+    app.kubernetes.io/name: anc-portal-api
+    app.kubernetes.io/part-of: anc-portal
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: anc-portal-api

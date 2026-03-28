@@ -1,0 +1,45 @@
+# =============================================================================
+# .dockerignore — ไฟล์ที่ไม่ต้อง copy เข้า Docker build context
+# =============================================================================
+
+# Git
+.git
+.gitignore
+
+# Build artifacts
+tmp/
+*.exe
+
+# Environment files (inject ผ่าน --env-file แทน)
+.env*
+!.env.example
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Documentation
+documents/
+README.md
+listme.md
+
+# Deployment configs (ไม่ต้อง copy เข้า app image)
+deployments/
+
+# Generated docs (rebuild ได้)
+docs/
+
+# Test data
+*_test.go
+testdata/
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Dev tools
+.air*.toml
+run.ps1
+Makefile

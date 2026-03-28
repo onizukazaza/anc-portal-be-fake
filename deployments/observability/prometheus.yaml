@@ -1,0 +1,28 @@
+# Prometheus — scrape config
+# scrape Go app /metrics endpoint + self-monitoring
+#
+# ⚠️ Prometheus ไม่รองรับ ${ENV} ใน config file
+# ถ้าต้องการเปลี่ยน Go app target → แก้ targets ด้านล่างโดยตรง
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+# >> เปิด remote write receiver เพื่อรับ metrics จาก OTel Collector
+remote_write: []
+
+scrape_configs:
+  # >> Prometheus self-monitoring
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # >> Go app metrics (Prometheus exporter endpoint)
+  - job_name: "anc-portal-be"
+    metrics_path: "/metrics"
+    scrape_interval: 10s
+    static_configs:
+      - targets: ["host.docker.internal:20000"]
+        labels:
+          service: "anc-portal-be"
+          env: "local"

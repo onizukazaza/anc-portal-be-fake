@@ -1,0 +1,74 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+namePrefix: stg-
+
+patches:
+  # API: 2 replicas, staging config
+  - target:
+      kind: Deployment
+      name: anc-portal-api
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 2
+
+  # Worker: 1 replica
+  - target:
+      kind: Deployment
+      name: anc-portal-worker
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 1
+
+  # HPA: 2-4 pods
+  - target:
+      kind: HorizontalPodAutoscaler
+      name: anc-portal-api
+    patch: |
+      - op: replace
+        path: /spec/minReplicas
+        value: 2
+      - op: replace
+        path: /spec/maxReplicas
+        value: 4
+
+  # ConfigMap overrides
+  - target:
+      kind: ConfigMap
+      name: anc-portal-config
+    patch: |
+      - op: replace
+        path: /data/STAGE_STATUS
+        value: "staging"
+      - op: replace
+        path: /data/OTEL_ENV
+        value: "staging"
+      - op: replace
+        path: /data/OTEL_SAMPLE_RATIO
+        value: "0.5"
+      - op: replace
+        path: /data/SWAGGER_ENABLED
+        value: "true"
+
+  # Ingress: staging host
+  - target:
+      kind: Ingress
+      name: anc-portal-api
+    patch: |
+      - op: replace
+        path: /spec/tls/0/hosts/0
+        value: "api-staging.anc-portal.example.com"
+      - op: replace
+        path: /spec/rules/0/host
+        value: "api-staging.anc-portal.example.com"
+
+images:
+  - name: ghcr.io/onizukazaza/anc-portal-be-fake
+    newTag: staging
+  - name: ghcr.io/anc-portal/anc-portal-worker
+    newTag: staging

@@ -1,0 +1,78 @@
+# =============================================================================
+# GitHub Auto-Generated Release Notes Configuration
+# =============================================================================
+# เมื่อสร้าง Release บน GitHub จะจัดกลุ่ม PR อัตโนมัติตาม labels
+# Docs: https://docs.github.com/en/repositories/releasing-projects-on-github/automatically-generated-release-notes
+# =============================================================================
+
+changelog:
+  exclude:
+    labels:
+      - skip-changelog
+      - dependencies
+    authors:
+      - dependabot
+      - dependabot[bot]
+
+  categories:
+    - title: "💥 Breaking Changes"
+      labels:
+        - breaking-change
+        - breaking
+
+    - title: "🚀 Features"
+      labels:
+        - feature
+        - enhancement
+
+    - title: "🐛 Bug Fixes"
+      labels:
+        - bug
+        - bugfix
+        - fix
+        - hotfix
+
+    - title: "⚡ Performance"
+      labels:
+        - performance
+        - optimization
+
+    - title: "🔒 Security"
+      labels:
+        - security
+        - vulnerability
+
+    - title: "📦 Infrastructure"
+      labels:
+        - infrastructure
+        - ci
+        - cd
+        - devops
+        - docker
+        - k8s
+
+    - title: "📖 Documentation"
+      labels:
+        - documentation
+        - docs
+
+    - title: "🧹 Maintenance"
+      labels:
+        - chore
+        - refactor
+        - cleanup
+        - tech-debt
+
+    - title: "🧪 Testing"
+      labels:
+        - test
+        - testing
+
+    - title: "📦 Dependencies"
+      labels:
+        - dependencies
+        - dependency
+
+    - title: "🔧 Other Changes"
+      labels:
+        - "*"

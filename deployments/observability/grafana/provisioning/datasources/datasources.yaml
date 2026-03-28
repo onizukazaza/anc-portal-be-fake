@@ -1,0 +1,27 @@
+# Grafana datasource provisioning — auto-configure Tempo + Prometheus
+apiVersion: 1
+
+datasources:
+  # >> Tempo — traces
+  - name: Tempo
+    type: tempo
+    access: proxy
+    url: http://tempo:3200
+    isDefault: true
+    jsonData:
+      httpMethod: GET
+      tracesToMetrics:
+        datasourceUid: prometheus
+      serviceMap:
+        datasourceUid: prometheus
+      nodeGraph:
+        enabled: true
+
+  # >> Prometheus — metrics
+  - name: Prometheus
+    type: prometheus
+    uid: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    jsonData:
+      timeInterval: "10s"

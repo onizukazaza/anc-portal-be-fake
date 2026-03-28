@@ -1,0 +1,56 @@
+# CronJob: sync ข้อมูลจาก external DB → main DB ตามตารางเวลา
+# Usage: kubectl apply -k deployments/k8s/base/
+# Manual trigger: kubectl create job --from=cronjob/anc-portal-sync anc-portal-sync-manual -n anc-portal
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: anc-portal-sync
+  namespace: anc-portal
+  labels:
+    app.kubernetes.io/name: anc-portal-sync
+    app.kubernetes.io/component: sync
+    app.kubernetes.io/part-of: anc-portal
+spec:
+  schedule: "0 */6 * * *" # ทุก 6 ชม.
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 3
+      ttlSecondsAfterFinished: 600
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: anc-portal-sync
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: sync
+              image: ghcr.io/onizukazaza/anc-portal-be-fake:latest
+              command: ["./sync"]
+              args:
+                - "--env"
+                - "staging"
+                - "--table"
+                - "all"
+                - "--mode"
+                - "incremental"
+                - "--since"
+                - "7h"
+              envFrom:
+                - configMapRef:
+                    name: anc-portal-config
+                - secretRef:
+                    name: anc-portal-secret
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 128Mi
+                limits:
+                  cpu: 500m
+                  memory: 256Mi
+              securityContext:
+                runAsNonRoot: true
+                readOnlyRootFilesystem: true
+                allowPrivilegeEscalation: false

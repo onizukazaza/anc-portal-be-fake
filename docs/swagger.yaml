@@ -1,0 +1,249 @@
+basePath: /v1
+definitions:
+  github_com_anc-portal_anc-portal-be_internal_shared_dto.ApiResponse:
+    properties:
+      message:
+        description: คำอธิบาย ("success", "created successfully", "not found")
+        type: string
+      result:
+        description: ข้อมูลผลลัพธ์ — null ถ้า error
+      status:
+        description: '"OK" หรือ "ERROR"'
+        type: string
+      status_code:
+        description: HTTP status code (200, 201, 400, 500, ...)
+        type: integer
+    type: object
+  internal_modules_auth_adapters_http.loginRequest:
+    properties:
+      password:
+        example: secret123
+        type: string
+      username:
+        example: admin
+        type: string
+    type: object
+host: localhost:20000
+info:
+  contact: {}
+  description: Backend API for ANC Insurance Portal
+  title: ANC Portal API
+  version: 1.0.0
+paths:
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate user with username and password, then return access
+        token
+      parameters:
+      - description: Login payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_modules_auth_adapters_http.loginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Login success
+          schema:
+            $ref: '#/definitions/github_com_anc-portal_anc-portal-be_internal_shared_dto.ApiResponse'
+        "400":
+          description: Invalid request body
+          schema:
+            $ref: '#/definitions/github_com_anc-portal_anc-portal-be_internal_shared_dto.ApiResponse'
+        "401":
+          description: Invalid credentials
+          schema:
+            $ref: '#/definitions/github_com_anc-portal_anc-portal-be_internal_shared_dto.ApiResponse'
+        "500":
+          description: Internal error
+          schema:
+            $ref: '#/definitions/github_com_anc-portal_anc-portal-be_internal_shared_dto.ApiResponse'
+      summary: Login user
+      tags:
+      - Auth
+  /cmi/{job_id}/request-policy-single-cmi:
+    get:
+      consumes:
+      - application/json
+      description: ดึงข้อมูลงาน พรบ. เดี่ยว (Compulsory Motor Insurance) ตาม job_id
+      parameters:
+      - description: Job ID
+        in: path
+        name: job_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: CMI policy data
+          schema:
+            $ref: '#/definitions/github_com_anc-portal_anc-portal-be_internal_shared_dto.ApiResponse'
+        "400":
+          description: Job ID is required
+          schema:
+            $ref: '#/definitions/github_com_anc-portal_anc-portal-be_internal_shared_dto.ApiResponse'
+        "404":
+          description: Job not found
+          schema:
+            $ref: '#/definitions/github_com_anc-portal_anc-portal-be_internal_shared_dto.ApiResponse'
+        "500":
+          description: Internal error
+          schema:
+            $ref: '#/definitions/github_com_anc-portal_anc-portal-be_internal_shared_dto.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Get CMI policy by job ID
+      tags:
+      - CMI
+  /external-db/health:
+    get:
+      consumes:
+      - application/json
+      description: Test connectivity of all registered external databases
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: All database statuses
+          schema:
+            $ref: '#/definitions/github_com_anc-portal_anc-portal-be_internal_shared_dto.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Check all external databases
+      tags:
+      - ExternalDB
+  /external-db/health/{name}:
+    get:
+      consumes:
+      - application/json
+      description: Test connectivity of a specific external database
+      parameters:
+      - description: Database name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Database status
+          schema:
+            $ref: '#/definitions/github_com_anc-portal_anc-portal-be_internal_shared_dto.ApiResponse'
+        "400":
+          description: Name is required
+          schema:
+            $ref: '#/definitions/github_com_anc-portal_anc-portal-be_internal_shared_dto.ApiResponse'
+        "404":
+          description: Database not found
+          schema:
+            $ref: '#/definitions/github_com_anc-portal_anc-portal-be_internal_shared_dto.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Check external database by name
+      tags:
+      - ExternalDB
+  /quotations:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve paginated quotations for a given customer from external
+        ERP database
+      parameters:
+      - description: Customer ID
+        in: query
+        name: customerId
+        required: true
+        type: string
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      - description: Sort column
+        enum:
+        - created_at
+        - doc_no
+        - total_amount
+        - status
+        in: query
+        name: sort
+        type: string
+      - default: desc
+        description: Sort order
+        enum:
+        - asc
+        - desc
+        in: query
+        name: order
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Paginated quotations
+          schema:
+            $ref: '#/definitions/github_com_anc-portal_anc-portal-be_internal_shared_dto.ApiResponse'
+        "400":
+          description: Customer ID is required
+          schema:
+            $ref: '#/definitions/github_com_anc-portal_anc-portal-be_internal_shared_dto.ApiResponse'
+        "500":
+          description: Internal error
+          schema:
+            $ref: '#/definitions/github_com_anc-portal_anc-portal-be_internal_shared_dto.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: List quotations by customer
+      tags:
+      - Quotation
+  /quotations/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a single quotation from external ERP database
+      parameters:
+      - description: Quotation ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Quotation data
+          schema:
+            $ref: '#/definitions/github_com_anc-portal_anc-portal-be_internal_shared_dto.ApiResponse'
+        "404":
+          description: Quotation not found
+          schema:
+            $ref: '#/definitions/github_com_anc-portal_anc-portal-be_internal_shared_dto.ApiResponse'
+        "500":
+          description: Internal error
+          schema:
+            $ref: '#/definitions/github_com_anc-portal_anc-portal-be_internal_shared_dto.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Get quotation by ID
+      tags:
+      - Quotation
+schemes:
+- http
+securityDefinitions:
+  BearerAuth:
+    description: 'Input: Bearer {access_token}'
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

@@ -1,0 +1,75 @@
+# yaml-language-server: $schema=https://json-schema.org/draft/2020-12/schema
+# =============================================================================
+# golangci-lint — ANC Portal Backend
+# =============================================================================
+# ใช้: golangci-lint run
+# CI: golangci-lint-action@v6 จะอ่านไฟล์นี้อัตโนมัติ
+# =============================================================================
+
+run:
+  timeout: 5m
+  modules-download-mode: readonly
+
+output:
+  formats:
+    - format: colored-line-number
+  sort-results: true
+
+linters:
+  enable:
+    # >> Bugs & Correctness
+    - errcheck          # ตรวจ unchecked errors
+    - govet             # vet ตรวจ suspicious constructs
+    - staticcheck       # static analysis ระดับสูง
+    - typecheck         # type-checking errors
+    - bodyclose         # ตรวจ HTTP response body ไม่ปิด
+    - noctx             # ตรวจ HTTP request ไม่ส่ง context
+    - rowserrcheck      # ตรวจ sql.Rows.Err()
+    - sqlclosecheck     # ตรวจ sql.Rows/Stmt ไม่ปิด
+
+    # >> Performance
+    - prealloc          # แนะนำ pre-allocate slices
+    - ineffassign       # ตรวจ assignment ที่ไม่ได้ใช้
+
+    # >> Style & Simplicity
+    - unused            # ตรวจ code ที่ไม่ได้ใช้
+    - gosimple          # แนะนำให้ code เรียบง่ายขึ้น
+    - gocritic          # opinionated linter — diagnostic + performance
+
+    # >> Security
+    - gosec             # ตรวจ security issues
+
+linters-settings:
+  govet:
+    enable:
+      - shadow          # ตรวจ variable shadowing
+  gosec:
+    excludes:
+      - G104            # unhandled errors (ปกติเป็น defer)
+      - G304            # file path from variable (ใช้ใน config loader)
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - performance
+    disabled-checks:
+      - hugeParam       # Go compiler จัดการ stack-allocated structs ได้ดี
+
+issues:
+  exclude-dirs:
+    - docs              # swagger generated code
+    - testdata
+    - tmp
+    - migrations        # SQL files
+  exclude-rules:
+    # Test files: อนุญาต dot-import (testkit) และ unused params
+    - path: _test\.go
+      linters:
+        - gosec
+        - errcheck
+    # Generated swagger docs
+    - path: docs/
+      linters:
+        - typecheck
+        - unused
+  max-issues-per-linter: 50
+  max-same-issues: 5

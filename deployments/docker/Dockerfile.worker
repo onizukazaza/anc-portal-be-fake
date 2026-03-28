@@ -1,0 +1,34 @@
+# =============================================================================
+# Worker Dockerfile — สำหรับ Kafka consumer แยก container
+# =============================================================================
+# ⚠️  ไฟล์นี้ยังคงไว้สำหรับ backward compatibility
+# แนะนำให้ใช้ multi-target build จาก Dockerfile หลักแทน:
+#   docker build -f deployments/docker/Dockerfile --target worker -t anc-portal-worker .
+#
+# ถ้าต้องการ build แบบเดิม:
+#   docker build -f deployments/docker/Dockerfile.worker -t anc-portal-worker .
+# =============================================================================
+
+FROM golang:1.25-alpine AS builder
+
+RUN apk add --no-cache git ca-certificates tzdata
+
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+    go build -ldflags="-s -w" -o /app/worker ./cmd/worker
+
+FROM alpine:3.21
+RUN apk add --no-cache ca-certificates tzdata && \
+    addgroup -S appgroup && adduser -S appuser -G appgroup
+
+WORKDIR /app
+COPY --from=builder /app/worker ./worker
+COPY config/ ./config/
+
+USER appuser
+
+ENTRYPOINT ["./worker"]

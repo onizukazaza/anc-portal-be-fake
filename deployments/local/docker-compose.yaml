@@ -1,0 +1,102 @@
+# =============================================================================
+# Local Development Dependencies — PostgreSQL + Redis + Kafka
+# =============================================================================
+# สำหรับ local development เท่านั้น — ไม่ใช่ production
+#
+# วิธีใช้:
+#   make local-up        เปิด dependencies ทั้งหมด
+#   make local-down      ปิด dependencies
+#   make local-down-v    ปิด + ลบ data volumes
+#   make local-ps        ดูสถานะ containers
+#   make local-logs      ดู logs
+#
+# Endpoints:
+#   PostgreSQL  → localhost:5432  (postgres/123456)
+#   Redis       → localhost:6379
+#   Kafka       → localhost:9092
+#   Kafka UI    → http://localhost:8080
+# =============================================================================
+
+services:
+
+  # >> PostgreSQL — Main database + External database
+  postgres:
+    image: ${POSTGRES_IMAGE:-postgres:17-alpine}
+    container_name: anc-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123456}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # >> Redis — Cache layer
+  redis:
+    image: ${REDIS_IMAGE:-redis:7-alpine}
+    container_name: anc-redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # >> Kafka (KRaft mode — ไม่ต้องใช้ Zookeeper)
+  kafka:
+    image: ${KAFKA_IMAGE:-apache/kafka:3.9.0}
+    container_name: anc-kafka
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENERS: PLAINTEXT://kafka:9092,CONTROLLER://kafka:9093,EXTERNAL://0.0.0.0:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      CLUSTER_ID: "anc-portal-local-cluster-001"
+    ports:
+      - "${KAFKA_PORT:-29092}:29092"
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --list || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  # >> Kafka UI — Web UI สำหรับดู topics, messages, consumers
+  kafka-ui:
+    image: ${KAFKA_UI_IMAGE:-provectuslabs/kafka-ui:v0.7.2}
+    container_name: anc-kafka-ui
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      DYNAMIC_CONFIG_ENABLED: "true"
+    ports:
+      - "${KAFKA_UI_PORT:-8080}:8080"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  redis-data:
+  kafka-data:

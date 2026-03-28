@@ -1,0 +1,113 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+namePrefix: prod-
+
+patches:
+  # API: 3 replicas for production
+  - target:
+      kind: Deployment
+      name: anc-portal-api
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 3
+
+  # Worker: 2 replicas for production
+  - target:
+      kind: Deployment
+      name: anc-portal-worker
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 2
+
+  # HPA: 3-8 pods
+  - target:
+      kind: HorizontalPodAutoscaler
+      name: anc-portal-api
+    patch: |
+      - op: replace
+        path: /spec/minReplicas
+        value: 3
+      - op: replace
+        path: /spec/maxReplicas
+        value: 8
+
+  # ConfigMap: production values
+  - target:
+      kind: ConfigMap
+      name: anc-portal-config
+    patch: |
+      - op: replace
+        path: /data/STAGE_STATUS
+        value: "production"
+      - op: replace
+        path: /data/SERVER_ALLOW_ORIGINS
+        value: "https://portal.anc.co.th"
+      - op: replace
+        path: /data/DB_MAX_CONNS
+        value: "30"
+      - op: replace
+        path: /data/DB_MIN_CONNS
+        value: "10"
+      - op: replace
+        path: /data/OTEL_ENV
+        value: "production"
+      - op: replace
+        path: /data/OTEL_SAMPLE_RATIO
+        value: "0.05"
+      - op: replace
+        path: /data/SWAGGER_ENABLED
+        value: "false"
+
+  # Production: higher resource limits
+  - target:
+      kind: Deployment
+      name: anc-portal-api
+    patch: |
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/cpu
+        value: "200m"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/memory
+        value: "256Mi"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/cpu
+        value: "1000m"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: "512Mi"
+
+  # Ingress: production host
+  - target:
+      kind: Ingress
+      name: anc-portal-api
+    patch: |
+      - op: replace
+        path: /spec/tls/0/hosts/0
+        value: "api.portal.anc.co.th"
+      - op: replace
+        path: /spec/tls/0/secretName
+        value: "anc-portal-tls-prod"
+      - op: replace
+        path: /spec/rules/0/host
+        value: "api.portal.anc.co.th"
+
+  # PDB: production ต้องมี pod พร้อมอย่างน้อย 2 ตัว
+  - target:
+      kind: PodDisruptionBudget
+      name: anc-portal-api
+    patch: |
+      - op: replace
+        path: /spec/minAvailable
+        value: 2
+
+images:
+  - name: ghcr.io/onizukazaza/anc-portal-be-fake
+    newTag: v1.0.0
+  - name: ghcr.io/anc-portal/anc-portal-worker
+    newTag: v1.0.0
