@@ -58,6 +58,11 @@ const (
 	TracerQuotationHandler = "quotation.handler"
 	TracerQuotationService = "quotation.service"
 	TracerQuotationRepo    = "quotation.repository"
+
+	// >> Webhook (GitHub → Discord)
+	TracerWebhookHandler  = "webhook.handler"
+	TracerWebhookService  = "webhook.service"
+	TracerWebhookNotifier = "webhook.notifier"
 )
 
 // ─────────────────────────────────────────────────────────────

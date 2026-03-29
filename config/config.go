@@ -12,6 +12,7 @@ type Config struct {
 	LocalCache  LocalCache          `mapstructure:"localCache"`
 	OTel        OTel                `mapstructure:"otel"`
 	Kafka       Kafka               `mapstructure:"kafka"`
+	Webhook     Webhook             `mapstructure:"webhook"`
 }
 
 type Server struct {
@@ -93,4 +94,10 @@ type Kafka struct {
 	WriteTimeout time.Duration `mapstructure:"writeTimeout"`
 	MaxBytes     int           `mapstructure:"maxBytes"`
 	MaxRetries   int           `mapstructure:"maxRetries"`
+}
+
+type Webhook struct {
+	Enabled           bool   `mapstructure:"enabled"`
+	GitHubSecret      string `mapstructure:"githubSecret"`
+	DiscordWebhookURL string `mapstructure:"discordWebhookUrl"`
 }

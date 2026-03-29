@@ -127,6 +127,10 @@ func bindEnvs(v *viper.Viper) {
 	_ = v.BindEnv("kafka.writeTimeout", "KAFKA_WRITE_TIMEOUT")
 	_ = v.BindEnv("kafka.maxBytes", "KAFKA_MAX_BYTES")
 	_ = v.BindEnv("kafka.maxRetries", "KAFKA_MAX_RETRIES")
+
+	_ = v.BindEnv("webhook.enabled", "WEBHOOK_ENABLED")
+	_ = v.BindEnv("webhook.githubSecret", "WEBHOOK_GITHUB_SECRET")
+	_ = v.BindEnv("webhook.discordWebhookUrl", "WEBHOOK_DISCORD_WEBHOOK_URL")
 }
 
 func setDefaults(v *viper.Viper) {
@@ -174,4 +178,6 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("kafka.writeTimeout", "10s")
 	v.SetDefault("kafka.maxBytes", 10485760)
 	v.SetDefault("kafka.maxRetries", 3)
+
+	v.SetDefault("webhook.enabled", false)
 }

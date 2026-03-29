@@ -21,6 +21,7 @@ import (
 	"github.com/onizukazaza/anc-portal-be-fake/internal/modules/cmi"
 	"github.com/onizukazaza/anc-portal-be-fake/internal/modules/externaldb"
 	"github.com/onizukazaza/anc-portal-be-fake/internal/modules/quotation"
+	"github.com/onizukazaza/anc-portal-be-fake/internal/modules/webhook"
 	"github.com/onizukazaza/anc-portal-be-fake/internal/shared/dto"
 	"github.com/onizukazaza/anc-portal-be-fake/internal/shared/enum"
 	module "github.com/onizukazaza/anc-portal-be-fake/internal/shared/module"
@@ -212,6 +213,7 @@ func (s *Server) registerRoutes() {
 	externaldb.Register(api, deps)
 	quotation.Register(api, deps)
 	cmi.Register(api, deps)
+	webhook.Register(api, deps)
 
 	// >> Kafka test route for local stage
 	if s.cfg.StageStatus == enum.StageLocal && s.kafkaProducer != nil {

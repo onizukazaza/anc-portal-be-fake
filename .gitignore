@@ -28,6 +28,8 @@ go.work.sum
 .env
 .env.*
 !.env.local.example
+!.env.uat.example
+!.env.prod.example
 
 # Air hot-reload
 tmp/
