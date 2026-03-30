@@ -1,6 +1,6 @@
 # GitHub Webhook → Discord Notification
 
-> **v2.0** — Last updated: March 2026
+> **v2.1** — Last updated: March 2026
 >
 > แนวทางการออกแบบระบบแจ้งเตือน GitHub events ไปยัง Discord ผ่าน Golang service
 >
@@ -121,4 +121,39 @@ cmd/
 
 ---
 
-> **v2.0** — March 2026 | ANC Portal Backend Team
+## 6. สถานะปัจจุบัน (Implementation Status)
+
+โมดูล webhook ถูก implement แล้วใน `internal/modules/webhook/`:
+
+```
+internal/modules/webhook/
+├── module.go              // Register routes + wire dependencies
+├── domain/event.go        // GitHubPushEvent struct
+├── ports/notifier.go      // Notifier interface (Discord)
+├── app/service.go         // Business logic + OTel tracing
+└── adapters/
+    └── http/handler.go    // POST /v1/webhook/github endpoint
+```
+
+### Bug Fixes Applied
+
+| # | ปัญหา | แก้ไข | ไฟล์ |
+|---|--------|--------|-------|
+| BF1 | goroutine ส่ง Discord ไม่มี panic recovery | เพิ่ม `defer recover()` | `app/service.go` |
+| BF1b | `ctx, span :=` unused variable (lint fail) | เปลี่ยนเป็น `_, span :=` | `app/service.go` |
+
+### Discord Notification Coverage
+
+นอกจาก GitHub webhook → Discord ผ่าน Golang service แล้ว ยังมี Discord notification จาก CI/CD:
+
+| แหล่ง | รายละเอียด |
+|--------|------------|
+| **GitHub Actions CI** | Rich embed: status, per-job icons, PR info, failure details (`ci.yml` notify job) |
+| **Deploy Staging/Prod** | Success + Failure notification (`deploy-staging.yml`, `deploy-production.yml`) |
+| **Release** | Release ใหม่ + changelog link (`release.yml`) |
+| **Local CI** | `run.ps1 ci` → Discord พร้อม failure details (code block, max 1000 chars) |
+| **GitHub Push Event** | Golang webhook service → Discord (โมดูล webhook) |
+
+---
+
+> **v2.1** — March 2026 | ANC Portal Backend Team

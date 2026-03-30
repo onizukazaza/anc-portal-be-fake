@@ -1,9 +1,9 @@
 # ANC Portal BE — Project Structure
 
-> **Status:** Architecture Design v1.0  
+> **Status:** Architecture Design v1.1  
 > **Pattern:** Modular Monolith + Hexagonal Architecture (Ports & Adapters)  
 > **Language:** Go 1.25 · Fiber v2 · pgx v5  
-> **Last Updated:** 2026-03-28
+> **Last Updated:** 2026-03-30
 
 ---
 
@@ -232,11 +232,23 @@ anc-portal-be/
 │   │   ├── job/                       #   ⚙️  Job Processing (planned)
 │   │   ├── notification/              #   🔔 Notification System (planned)
 │   │   ├── payment/                   #   💳 Payment Processing (planned)
-│   │   └── policy/                    #   📜 Policy Management (planned)
+│   │   ├── policy/                    #   📜 Policy Management (planned)
+│   │   └── webhook/                   #   🔗 GitHub Webhook → Discord
+│   │       ├── module.go              #     Register — webhook routes
+│   │       ├── domain/
+│   │       │   └── webhook.go         #     WebhookEvent model
+│   │       ├── ports/
+│   │       │   └── notifier.go        #     Notifier interface
+│   │       ├── app/
+│   │       │   └── service.go         #     WebhookService — verify + process + notify
+│   │       └── adapters/
+│   │           ├── http/handler.go    #       Fiber HTTP handler
+│   │           └── discord/client.go  #       Discord webhook sender
 │   │
 │   ├── shared/                        # ── Shared Internal Packages ──
 │   │   ├── dto/
-│   │   │   └── response.go            #   ApiResponse envelope (Success, Error, Meta)
+│   │   │   ├── response.go            #   ApiResponse, ErrorResponse, ErrorResult, helpers
+│   │   │   └── error_codes.go         #   Error Code Catalog — 15 TraceId constants (5 modules)
 │   │   ├── enum/
 │   │   │   ├── health.go              #   HealthOK, HealthNotReady
 │   │   │   ├── response.go            #   StatusSuccess, StatusFail
@@ -368,17 +380,21 @@ anc-portal-be/
 │   ├── architecture/
 │   │   ├── README.md                  #   architecture overview
 │   │   ├── project-structure.md       #   ← this file
+│   │   ├── gaps-and-todos.md          #   gap analysis + todo tracking
 │   │   ├── microservice-readiness.md  #   microservice extraction guide
-│   │   └── swagger-overview.md        #   Swagger/OpenAPI guide
+│   │   └── swagger-overview.md        #   Swagger/OpenAPI guide + Error Code Catalog
 │   ├── cicd/
-│   │   └── ci-cd-guide.md             #   CI/CD pipeline guide
+│   │   ├── ci-cd-guide.md             #   CI/CD pipeline guide
+│   │   └── ci-cd-pipeline-explained.md #   CI/CD อธิบายทุกส่วน (Lint/Test/Vuln/Build)
 │   ├── integrations/
 │   │   ├── github-webhook-discord-notification.md
 │   │   ├── otel-grafana-observability.md
 │   │   ├── otel-tracing-guide.md
 │   │   └── redis-cache-guide.md
 │   └── testing/
-│       └── unit-test-guide.md
+│       ├── unit-test-guide.md
+│       ├── unit-test-summary.md       #   test architecture summary for ClickUp
+│       └── unit-test-brief.md         #   brief test overview
 │
 ├── deployments/                       # ─── Infrastructure ───
 │   ├── docker/

@@ -34,9 +34,9 @@ func NewCMIController(service *app.Service) CMIController {
 // @Produce      json
 // @Param        job_id path string true "Job ID"
 // @Success      200 {object} dto.ApiResponse "CMI policy data"
-// @Failure      400 {object} dto.ApiResponse "Job ID is required"
-// @Failure      404 {object} dto.ApiResponse "Job not found"
-// @Failure      500 {object} dto.ApiResponse "Internal error"
+// @Failure      400 {object} dto.ErrorResponse "trace_id: cmi-job-id-required — ไม่ได้ส่ง job_id"
+// @Failure      404 {object} dto.ErrorResponse "trace_id: cmi-job-not-found — ไม่พบ job"
+// @Failure      500 {object} dto.ErrorResponse "trace_id: cmi-internal-error — เกิดข้อผิดพลาดภายใน CMI service"
 // @Security     BearerAuth
 // @Router       /cmi/{job_id}/request-policy-single-cmi [get]
 func (h *Handler) GetPolicyByJobID(c *fiber.Ctx) error {
@@ -49,7 +49,7 @@ func (h *Handler) GetPolicyByJobID(c *fiber.Ctx) error {
 	log.L().Info().Str("layer", "handler").Str("job_id", jobID).Msg("→ CMI GetPolicyByJobID")
 
 	if jobID == "" {
-		return dto.Error(c, fiber.StatusBadRequest, "job_id is required")
+		return dto.ErrorWithTrace(c, fiber.StatusBadRequest, "job_id is required", dto.TraceCMIJobIdRequired)
 	}
 
 	policy, err := h.service.GetPolicyByJobID(ctx, jobID)
@@ -57,10 +57,10 @@ func (h *Handler) GetPolicyByJobID(c *fiber.Ctx) error {
 		elapsed := time.Since(start)
 		if errors.Is(err, app.ErrJobNotFound) {
 			log.L().Warn().Str("layer", "handler").Str("job_id", jobID).Dur("elapsed", elapsed).Msg("← CMI job not found")
-			return dto.Error(c, fiber.StatusNotFound, "job not found")
+			return dto.ErrorWithTrace(c, fiber.StatusNotFound, "job not found", dto.TraceCMIJobNotFound)
 		}
 		log.L().Error().Err(err).Str("layer", "handler").Str("job_id", jobID).Dur("elapsed", elapsed).Msg("← CMI GetPolicyByJobID failed")
-		return dto.Error(c, fiber.StatusInternalServerError, "internal error")
+		return dto.ErrorWithTrace(c, fiber.StatusInternalServerError, "internal error", dto.TraceCMIInternalError)
 	}
 
 	elapsed := time.Since(start)

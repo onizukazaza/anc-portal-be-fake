@@ -271,7 +271,7 @@ func (h *Handler) CreatePayment(c *fiber.Ctx) error {
         // >> บันทึก error ใน span
         span.RecordError(err)
         span.SetStatus(codes.Error, err.Error())
-        return dto.Error(c, fiber.StatusInternalServerError, "payment failed")
+        return dto.ErrorWithTrace(c, fiber.StatusInternalServerError, "payment failed", dto.TracePaymentCreate)
     }
 
     return dto.Success(c, fiber.StatusCreated, result)
@@ -481,9 +481,13 @@ appOtel.Tracer(appOtel.TracerAuthHandler)
 - [ ] `defer span.End()` อยู่ถัดจาก `Start()` ทันที
 - [ ] Context propagation: ใช้ `ctx` ที่ได้จาก `Start()` ส่งต่อ
 - [ ] Error handling: `span.RecordError(err)` + `span.SetStatus(codes.Error, ...)`
+
+> **Best Practice:** ทุกครั้งที่ return error จาก handler/service ต้อง `span.RecordError(err)` เสมอ
+> ไม่งั้น error จะไม่ปรากฏใน Tempo/Grafana ทำให้ debug ยาก
+> (**ตัวอย่างจริง:** quotation handler เคยขาด RecordError ทำให้ 500 errors ไม่แสดงใน trace — แก้แล้ว)
 - [ ] ถ้าเพิ่ม module ใหม่: อัปเดต `tracername.go` + `tracername_test.go`
 - [ ] ถ้าเพิ่ม infrastructure component: ใช้ prefix `"anc/..."` ใน tracer name
 
 ---
 
-> **v2.0** — March 2026 | ANC Portal Backend Team
+> **v2.1** — March 2026 | ANC Portal Backend Team

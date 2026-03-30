@@ -47,8 +47,9 @@ func (h *Handler) CheckAll(c *fiber.Ctx) error {
 // @Produce json
 // @Param name path string true "Database name"
 // @Success 200 {object} dto.ApiResponse "Database status"
-// @Failure 400 {object} dto.ApiResponse "Name is required"
-// @Failure 404 {object} dto.ApiResponse "Database not found"
+// @Failure 400 {object} dto.ErrorResponse "trace_id: extdb-name-required — ไม่ได้ส่ง database name"
+// @Failure 404 {object} dto.ErrorResponse "trace_id: extdb-not-found — ไม่พบ database ที่ระบุ"
+// @Failure 503 {object} dto.ErrorResponse "trace_id: extdb-unhealthy — database ไม่สามารถเชื่อมต่อได้"
 // @Security BearerAuth
 // @Router /external-db/health/{name} [get]
 func (h *Handler) CheckByName(c *fiber.Ctx) error {
@@ -57,12 +58,15 @@ func (h *Handler) CheckByName(c *fiber.Ctx) error {
 
 	name := c.Params("name")
 	if name == "" {
-		return dto.Error(c, fiber.StatusBadRequest, "database name is required")
+		return dto.ErrorWithTrace(c, fiber.StatusBadRequest, "database name is required", dto.TraceExtDBNameRequired)
 	}
 
 	result := h.service.CheckByName(ctx, name)
 	if result.Status == enum.DBError {
-		return dto.Error(c, fiber.StatusNotFound, result.Error)
+		return dto.ErrorWithTrace(c, fiber.StatusNotFound, result.Error, dto.TraceExtDBNotFound)
+	}
+	if result.Status == enum.DBUnhealthy {
+		return dto.ErrorWithTrace(c, fiber.StatusServiceUnavailable, result.Error, dto.TraceExtDBUnhealthy)
 	}
 
 	return dto.Success(c, fiber.StatusOK, result)

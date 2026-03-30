@@ -93,6 +93,7 @@ switch ($Command) {
 
         $results = @()
         $failed = $false
+        $failureDetails = ""
 
         for ($i = 0; $i -lt $steps.Count; $i++) {
             $step = $steps[$i]
@@ -104,7 +105,7 @@ switch ($Command) {
 
             $sw = [System.Diagnostics.Stopwatch]::StartNew()
             try {
-                & $step.Cmd 2>&1 | Out-Null
+                $output = & $step.Cmd 2>&1
                 if ($LASTEXITCODE -ne 0 -and $step.Name -ne "Vuln") { throw "exit code $LASTEXITCODE" }
                 $sw.Stop()
                 $sec = [math]::Round($sw.Elapsed.TotalSeconds, 1)
@@ -119,6 +120,19 @@ switch ($Command) {
                 Write-Host "`r  $label " -ForegroundColor Yellow -NoNewline
                 Write-Host "FAIL" -ForegroundColor Red -NoNewline
                 Write-Host " (${sec}s)"
+                # Show failure details
+                if ($output) {
+                    Write-Host ""
+                    Write-Host "  ── Failure Details ──" -ForegroundColor Red
+                    $output | ForEach-Object { Write-Host "  $_" -ForegroundColor DarkGray }
+                    Write-Host ""
+                    # Capture for Discord (limit to 1000 chars to fit embed)
+                    $rawDetails = ($output | Out-String).Trim()
+                    if ($rawDetails.Length -gt 1000) {
+                        $rawDetails = $rawDetails.Substring(0, 1000) + "..."
+                    }
+                    $failureDetails = $rawDetails
+                }
                 $failed = $true
                 break
             }
@@ -214,8 +228,17 @@ switch ($Command) {
 
             # Build JSON payload manually (avoids PS 5.1 ConvertTo-Json Unicode issues)
             $ts = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+
+            # Failure details field (only when failed)
+            $failureField = ""
+            if ($failed -and $failureDetails) {
+                # Escape JSON special chars in failure details
+                $escapedDetails = $failureDetails -replace '\\', '\\\\' -replace '"', '\"' -replace "`r`n", '\n' -replace "`n", '\n' -replace "`t", '  '
+                $failureField = ",{`"name`":`"\u26a0 Failure Details`",`"value`":`"``````\n${escapedDetails}\n```````",`"inline`":false}"
+            }
+
             $payload = @"
-{"embeds":[{"title":"$titleEmoji $title","color":$color,"fields":[{"name":"Branch","value":"``$branch``","inline":true},{"name":"Commit","value":"``$sha``","inline":true},{"name":"Machine","value":"${username}@${hostname}","inline":true},{"name":"Message","value":"$commitMsg","inline":false},{"name":"Jobs","value":"$jobsText","inline":false},{"name":"Total Time","value":"${totalSec}s","inline":true}],"footer":{"text":"ANC Portal CI (Local)"},"timestamp":"$ts"}]}
+{"embeds":[{"title":"$titleEmoji $title","color":$color,"fields":[{"name":"Branch","value":"``$branch``","inline":true},{"name":"Commit","value":"``$sha``","inline":true},{"name":"Machine","value":"${username}@${hostname}","inline":true},{"name":"Message","value":"$commitMsg","inline":false},{"name":"Jobs","value":"$jobsText","inline":false},{"name":"Total Time","value":"${totalSec}s","inline":true}${failureField}],"footer":{"text":"ANC Portal CI (Local)"},"timestamp":"$ts"}]}
 "@
             # Send as UTF-8
             $utf8 = [System.Text.Encoding]::UTF8.GetBytes($payload)

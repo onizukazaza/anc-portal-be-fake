@@ -1,6 +1,6 @@
 # CI/CD Guide — ANC Portal Backend
 
-> **v2.0** — Last updated: March 2026
+> **v2.1** — Last updated: March 2026
 >
 > คู่มือ CI/CD Pipeline สำหรับ ANC Portal Backend
 > ครอบคลุม: สถานะปัจจุบัน, GitHub Actions, Docker Build, K8s Deploy, Secret Management
@@ -70,6 +70,7 @@ Infrastructure layer + automation layer **พร้อมใช้งาน** (C
 
 | หมวด | รายละเอียด | ไฟล์ |
 |------|------------|------|
+| **Local CI** | `run.ps1 ci` — 4 step pipeline + Discord notification + failure details | `run.ps1` |
 | **Makefile** | 25+ targets ครบทุก workflow | `Makefile` |
 | **Dockerfile** | Multi-stage 4 ขั้น (builder → runtime-base → api → worker) | `deployments/docker/Dockerfile` |
 | **K8s Manifests** | 12 resources + Kustomize overlays (staging/production) | `deployments/k8s/` |
@@ -131,11 +132,13 @@ make seed                # Seed initial data
 
 | รายการ | ความสำคัญ | สถานะ |
 |--------|----------|-------|
-| GitHub Actions Workflows | สูงมาก | ทำแล้ว — `ci.yml`, `deploy-staging.yml`, `deploy-production.yml` |
+| GitHub Actions Workflows | สูงมาก | ทำแล้ว — `ci.yml`, `deploy-staging.yml`, `deploy-production.yml`, `release.yml` |
 | golangci-lint config (`.golangci.yml`) | สูง | ทำแล้ว — 17 linters |
 | Secret encryption (ESO/Sealed Secrets) | สูง | Placeholder CHANGE_ME — ต้องตั้งค่า |
-| Container image scanning | ปานกลาง | ทำแล้ว — Trivy ใน CI |
+| Container image scanning | ปานกลาง | ทำแล้ว — Trivy ใน CI (API + Worker) |
+| Vulnerability check | ปานกลาง | ทำแล้ว — govulncheck ใน CI |
 | Test coverage reporting | ปานกลาง | ทำแล้ว — coverage artifact + summary |
+| Discord CI/CD notification | ปานกลาง | ทำแล้ว — ทุก workflow + local `run.ps1 ci` |
 | Alerting rules (PrometheusRule) | ปานกลาง | ยังไม่มี |
 | Smoke test after deploy | ต่ำ | ทำแล้ว — staging healthz check |
 | Canary / Blue-Green deploy | ต่ำ | ใช้ RollingUpdate |
@@ -186,6 +189,8 @@ chore: อื่นๆ (deps, config)
 
 ### Workflow: `.github/workflows/ci.yml`
 
+**7 Jobs:** lint, test, vuln → build → docker → scan → notify
+
 ```yaml
 name: CI
 
@@ -225,74 +230,68 @@ jobs:
   # ─────────────────────────────────
   test:
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:17-alpine
-        env:
-          POSTGRES_USER: test
-          POSTGRES_PASSWORD: test
-          POSTGRES_DB: anc_portal_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: true
-
-      - name: Run tests with coverage
-        run: go test -race -coverprofile=coverage.out -covermode=atomic ./...
-
-      - name: Check coverage threshold
+      - name: Run tests
+        run: go test -race -coverprofile=coverage.out -covermode=atomic -count=1 ./...
+      - name: Coverage summary
         run: |
+          go tool cover -func=coverage.out | tail -1
           COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
-          echo "Total coverage: ${COVERAGE}%"
-          # ปรับ threshold ตามที่ทีมตกลง (เริ่มที่ 40% แล้วค่อยเพิ่ม)
-          if (( $(echo "$COVERAGE < 40" | bc -l) )); then
-            echo "::error::Coverage ${COVERAGE}% is below threshold 40%"
-            exit 1
-          fi
-
+          echo "## Test Coverage: ${COVERAGE}%" >> "$GITHUB_STEP_SUMMARY"
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: coverage-report
           path: coverage.out
+          retention-days: 14
 
   # ─────────────────────────────────
-  # Job 3: Build
+  # Job 3: Vulnerability Check
   # ─────────────────────────────────
-  build:
+  vuln:
     runs-on: ubuntu-latest
-    needs: [lint, test]
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: true
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+      - name: Run govulncheck
+        run: govulncheck ./...
 
-      - name: Build binaries
+  # ─────────────────────────────────
+  # Job 4: Build
+  # ─────────────────────────────────
+  build:
+    runs-on: ubuntu-latest
+    needs: [lint, test, vuln]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+      - name: Build all binaries
         run: |
           GIT_COMMIT=$(git rev-parse --short HEAD)
           BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-          go build -ldflags="-s -w \
-            -X github.com/onizukazaza/anc-portal-be-fake/pkg/buildinfo.GitCommit=${GIT_COMMIT} \
-            -X github.com/onizukazaza/anc-portal-be-fake/pkg/buildinfo.BuildTime=${BUILD_TIME}" \
-            -o /dev/null ./cmd/api
-          echo "Build OK — commit: ${GIT_COMMIT}, time: ${BUILD_TIME}"
+          LDFLAGS="-s -w -X .../pkg/buildinfo.GitCommit=${GIT_COMMIT} ..."
+          go build -ldflags="${LDFLAGS}" -o /dev/null ./cmd/api
+          go build -ldflags="${LDFLAGS}" -o /dev/null ./cmd/worker
+          go build -ldflags="-s -w"     -o /dev/null ./cmd/migrate
+          go build -ldflags="-s -w"     -o /dev/null ./cmd/seed
+          go build -ldflags="-s -w"     -o /dev/null ./cmd/sync
 
   # ─────────────────────────────────
-  # Job 4: Docker Build + Push
+  # Job 5: Docker Build + Push (push only)
   # ─────────────────────────────────
   docker:
     runs-on: ubuntu-latest
@@ -303,27 +302,12 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login to GHCR
-        uses: docker/login-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Docker meta
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/onizukazaza/anc-portal-be-fake
-          tags: |
-            type=ref,event=branch
-            type=sha,prefix=
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
-
       - name: Build and push API image
         uses: docker/build-push-action@v6
         with:
@@ -331,14 +315,8 @@ jobs:
           file: deployments/docker/Dockerfile
           target: api
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          build-args: |
-            GIT_COMMIT=${{ github.sha }}
-            BUILD_TIME=${{ github.event.head_commit.timestamp }}
-
       - name: Build and push Worker image
         uses: docker/build-push-action@v6
         with:
@@ -346,13 +324,40 @@ jobs:
           file: deployments/docker/Dockerfile
           target: worker
           push: true
-          tags: ${{ steps.meta.outputs.tags }}-worker
-          labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          build-args: |
-            GIT_COMMIT=${{ github.sha }}
-            BUILD_TIME=${{ github.event.head_commit.timestamp }}
+
+  # ─────────────────────────────────
+  # Job 6: Security Scan — Trivy
+  # ─────────────────────────────────
+  scan:
+    runs-on: ubuntu-latest
+    needs: [docker]
+    if: github.event_name == 'push'
+    steps:
+      - name: Scan API image (Trivy)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ghcr.io/${{ github.repository }}:${{ github.ref_name }}
+          format: table
+          exit-code: 1
+          severity: CRITICAL,HIGH
+      - name: Upload SARIF to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+
+  # ─────────────────────────────────
+  # Job 7: Notify — Discord
+  # ─────────────────────────────────
+  notify:
+    runs-on: ubuntu-latest
+    if: always()         # ← ทำงานทุก event (push + PR)
+    needs: [lint, test, vuln, build, docker, scan]
+    steps:
+      - name: Determine overall status + collect failed jobs
+      - name: Build Discord embed payload (with PR info + failure details)
+      - name: Send Discord notification
+        if: vars.DISCORD_WEBHOOK_URL != ''
 ```
 
 ### CI Flow Diagram
@@ -360,16 +365,21 @@ jobs:
 ```
 Push / PR
     │
-    ├── lint (golangci-lint)          ←── parallel
-    └── test (go test -race -cover)   ←── parallel
+    ├── lint  (golangci-lint)     ─┐
+    ├── test  (go test -race)     ─┼── parallel
+    └── vuln  (govulncheck)       ─┘
               │
               ▼
-          build (go build with ldflags)
+          build (5 binaries with ldflags)
               │
               ▼  (push event only)
-          docker (build + push to GHCR)
-              ├── API image   → ghcr.io/onizukazaza/anc-portal-be-fake:<sha>
-              └── Worker image → ghcr.io/onizukazaza/anc-portal-be-fake:<sha>-worker
+          docker (API + Worker → GHCR)
+              │
+              ▼  (push event only)
+          scan (Trivy CRITICAL/HIGH → GitHub Security tab)
+              │
+              ▼  (always — push + PR)
+          notify (Discord embed: status, jobs, PR info, failure details)
 ```
 
 ---
@@ -949,18 +959,39 @@ spec:
 
 ### CI/CD Notifications
 
-```yaml
-# เพิ่มท้าย workflow
-- name: Notify Discord
-  if: always()
-  uses: sarisia/actions-status-discord@v1
-  with:
-    webhook: ${{ secrets.DISCORD_WEBHOOK }}
-    title: "${{ github.workflow }}"
-    description: |
-      Branch: ${{ github.ref_name }}
-      Commit: ${{ github.sha }}
-      Status: ${{ job.status }}
+ทุก workflow มี Discord notification:
+
+| Workflow | Discord | รายละเอียด |
+|----------|---------|------------|
+| CI (`ci.yml`) | ✅ Job `notify` | Rich embed: status emoji, per-job icons, PR info, failure details, link to logs |
+| Deploy Staging | ✅ Success + Failure | แจ้ง deploy สำเร็จ/ล้มเหลว |
+| Deploy Production | ✅ Success + Failure | แจ้ง deploy สำเร็จ/ล้มเหลว |
+| Release | ✅ | แจ้ง release ใหม่ + changelog link |
+| Local CI (`run.ps1 ci`) | ✅ | แจ้งผลรวม + failure details (code block, max 1000 chars) |
+
+#### CI Discord Notification Features
+
+- **Status emoji**: ✅ = passed, ❌ = failed, ⚠️ = cancelled
+- **Per-job status icons**: แสดง icon ของทุก job (lint, test, vuln, build, docker, scan)
+- **PR info**: ถ้าเป็น pull_request event — แสดง PR number, title, branch direction
+- **Failure details**: เมื่อ fail — แสดงชื่อ job ที่ fail + link ไปดู logs
+- **ทำงานทุก event**: ทั้ง `push` และ `pull_request` (ไม่จำกัดแค่ push)
+
+#### ตัวอย่าง Discord Embed (CI Failed)
+
+```
+❌ CI Pipeline Failed
+──────────────────────────
+Branch:  `feature/auth`
+Commit:  `a1b2c3d`
+Author:  onchainjpeg
+Message: fix: update login handler
+
+Jobs:  ❌ Lint  ✅ Test  ✅ Vuln
+       ⏭️ Build  ⏭️ Docker  ⏭️ Scan
+
+⚠ Failed Steps: Lint
+   View Logs → [link]
 ```
 
 ---
@@ -978,9 +1009,9 @@ spec:
 | 5 | ตั้ง GitHub Secrets (KUBE_CONFIG, etc.) | สูง | 30 นาที |
 | 6 | ตั้ง GitHub Environment + protection rules | สูง | 30 นาที |
 | 7 | แก้ secret.yaml → ใช้ ESO หรือ Sealed Secrets | สูง | 2 ชม. |
-| 8 | เพิ่ม Trivy container scanning | ปานกลาง | 30 นาที |
+| 8 | ~~เพิ่ม Trivy container scanning~~ | ~~ปานกลาง~~ | ✅ ทำแล้ว |
 | 9 | เพิ่ม Prometheus alerting rules | ปานกลาง | 1 ชม. |
-| 10 | เพิ่ม Discord notification | ต่ำ | 30 นาที |
+| 10 | ~~เพิ่ม Discord notification~~ | ~~ต่ำ~~ | ✅ ทำแล้ว |
 
 ### Deploy Runbook — Staging
 
@@ -1038,18 +1069,20 @@ spec:
 - Security hardening (non-root, read-only FS, no privilege escalation)
 - Observability stack (OTel → Tempo + Prometheus + Grafana)
 - Migration Job + Sync CronJob
-- **CI Pipeline** — lint + test + vuln check + build + docker push + Trivy scan
-- **CD Staging** — auto deploy หลัง CI ผ่าน + migration + smoke test
-- **CD Production** — tag-based deploy + manual approval + pod verification
+- **CI Pipeline** — lint + test + vuln check + build + docker push + Trivy scan + **Discord notify**
+- **CD Staging** — auto deploy หลัง CI ผ่าน + migration + smoke test + Discord notify
+- **CD Production** — tag-based deploy + manual approval + pod verification + Discord notify
+- **Release** — auto changelog + GitHub Release + Discord notify
 - **golangci-lint** — 17 linters (errcheck, govet, staticcheck, gosec, etc.)
 - **Dependabot** — auto-update Go modules + Actions + Docker images
+- **Discord Notifications** — ทุก workflow + local `run.ps1 ci` (with failure details)
+- **Local CI** — `run.ps1 ci` พร้อม failure details display + Discord notification
 
 ### What We Need (ต้องทำเพิ่ม)
 
 - Secret management — ESO หรือ Sealed Secrets (แทน plaintext secret.yaml)
 - Alerting rules — PrometheusRule
 - GitHub Secrets + Environment — ตั้งค่าบน GitHub Settings
-- Coverage gate — CI threshold (เพิ่มทีหลัง)
 
 ### Priority Order
 
@@ -1057,9 +1090,47 @@ spec:
 Phase 1: ✅ golangci-lint + CI workflow           — ทำแล้ว
 Phase 2: ✅ CD staging + CD production              — ทำแล้ว
 Phase 3: ✅ Trivy scanning + Dependabot             — ทำแล้ว
-Phase 4: ⏳ Secret management + Alerting + GitHub Settings — รอตั้งค่า
+Phase 4: ✅ Discord notification (CI + CD + local)  — ทำแล้ว
+Phase 5: ⏳ Secret management + Alerting + GitHub Settings — รอตั้งค่า
 ```
+
+### Local CI Pipeline (`run.ps1 ci`)
+
+นอกจาก GitHub Actions แล้ว ยังมี **local CI** สำหรับรันบนเครื่อง developer:
+
+```powershell
+.\run.ps1 ci
+```
+
+**4 Steps:** Lint → Test → Vuln → Build (fail-fast — หยุดทันทีที่ step แรก fail)
+
+ตัวอย่างผลลัพธ์:
+
+```
+  CI Pipeline - ANC Portal Backend
+  =================================
+
+  [1/4] Lint PASS (2.6s)
+  [2/4] Test PASS (6.7s)
+  [3/4] Vuln PASS (8.4s)
+  [4/4] Build PASS (3.4s)
+
+  +---------+--------+---------+
+  | Step    | Status | Time    |
+  +---------+--------+---------+
+  | Lint    | PASS   | 2.6s    |
+  | Test    | PASS   | 6.7s    |
+  | Vuln    | PASS   | 8.4s    |
+  | Build   | PASS   | 3.4s    |
+  +---------+--------+---------+
+
+  PIPELINE PASSED (total: 21.2s)
+
+  Sending to Discord... sent!
+```
+
+เมื่อ fail จะแสดง **Failure Details** พร้อมข้อความ error จาก tool ที่ล้มเหลว และส่ง Discord notification พร้อม failure details (code block, ตัดที่ 1000 ตัวอักษร)
 
 ---
 
-> v2.0 — March 2026 | ANC Portal Backend Team
+> v2.1 — March 2026 | ANC Portal Backend Team

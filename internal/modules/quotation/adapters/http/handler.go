@@ -32,8 +32,9 @@ func NewQuotationController(service *app.Service) QuotationController {
 // @Produce json
 // @Param id path string true "Quotation ID"
 // @Success 200 {object} dto.ApiResponse "Quotation data"
-// @Failure 404 {object} dto.ApiResponse "Quotation not found"
-// @Failure 500 {object} dto.ApiResponse "Internal error"
+// @Failure 400 {object} dto.ErrorResponse "trace_id: qt-id-required — ไม่ได้ส่ง quotation id"
+// @Failure 404 {object} dto.ErrorResponse "trace_id: qt-not-found — ไม่พบ quotation"
+// @Failure 500 {object} dto.ErrorResponse "trace_id: qt-internal-error — เกิดข้อผิดพลาดภายใน quotation service"
 // @Security BearerAuth
 // @Router /quotations/{id} [get]
 func (h *Handler) GetByID(c *fiber.Ctx) error {
@@ -42,15 +43,16 @@ func (h *Handler) GetByID(c *fiber.Ctx) error {
 
 	id := c.Params("id")
 	if id == "" {
-		return dto.Error(c, fiber.StatusBadRequest, "quotation id is required")
+		return dto.ErrorWithTrace(c, fiber.StatusBadRequest, "quotation id is required", dto.TraceQTIdRequired)
 	}
 
 	qt, err := h.service.GetByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, app.ErrNotFound) {
-			return dto.Error(c, fiber.StatusNotFound, "quotation not found")
+			return dto.ErrorWithTrace(c, fiber.StatusNotFound, "quotation not found", dto.TraceQTNotFound)
 		}
-		return dto.Error(c, fiber.StatusInternalServerError, "internal error")
+		span.RecordError(err)
+		return dto.ErrorWithTrace(c, fiber.StatusInternalServerError, "internal error", dto.TraceQTInternalError)
 	}
 
 	return dto.Success(c, fiber.StatusOK, qt)
@@ -68,8 +70,8 @@ func (h *Handler) GetByID(c *fiber.Ctx) error {
 // @Param sort query string false "Sort column" Enums(created_at, doc_no, total_amount, status)
 // @Param order query string false "Sort order" Enums(asc, desc) default(desc)
 // @Success 200 {object} dto.ApiResponse "Paginated quotations"
-// @Failure 400 {object} dto.ApiResponse "Customer ID is required"
-// @Failure 500 {object} dto.ApiResponse "Internal error"
+// @Failure 400 {object} dto.ErrorResponse "trace_id: qt-customer-id-required — ไม่ได้ส่ง customerId"
+// @Failure 500 {object} dto.ErrorResponse "trace_id: qt-list-internal-error — เกิดข้อผิดพลาดขณะดึงรายการ quotation"
 // @Security BearerAuth
 // @Router /quotations [get]
 func (h *Handler) ListByCustomer(c *fiber.Ctx) error {
@@ -78,14 +80,15 @@ func (h *Handler) ListByCustomer(c *fiber.Ctx) error {
 
 	customerID := c.Query("customerId")
 	if customerID == "" {
-		return dto.Error(c, fiber.StatusBadRequest, "customerId is required")
+		return dto.ErrorWithTrace(c, fiber.StatusBadRequest, "customerId is required", dto.TraceQTCustomerRequired)
 	}
 
 	pg := pagination.FromFiber(c)
 
 	result, err := h.service.ListByCustomer(ctx, customerID, pg)
 	if err != nil {
-		return dto.Error(c, fiber.StatusInternalServerError, "internal error")
+		span.RecordError(err)
+		return dto.ErrorWithTrace(c, fiber.StatusInternalServerError, "internal error", dto.TraceQTListInternalError)
 	}
 
 	return dto.Success(c, fiber.StatusOK, result)

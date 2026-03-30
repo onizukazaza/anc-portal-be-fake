@@ -316,7 +316,7 @@ jobs:
   notify:
     name: Notify
     runs-on: ubuntu-latest
-    if: always() && github.event_name == 'push'
+    if: always()
     needs: [lint, test, vuln, build, docker, scan]
     steps:
       - name: Determine overall status
@@ -332,6 +332,17 @@ jobs:
 
           echo "lint=${LINT} test=${TEST} vuln=${VULN} build=${BUILD} docker=${DOCKER} scan=${SCAN}"
 
+          # เก็บ job ที่ fail สำหรับ failure details
+          FAILED_JOBS=""
+          [ "$LINT"   = "failure" ] && FAILED_JOBS="${FAILED_JOBS}Lint, "
+          [ "$TEST"   = "failure" ] && FAILED_JOBS="${FAILED_JOBS}Test, "
+          [ "$VULN"   = "failure" ] && FAILED_JOBS="${FAILED_JOBS}Vuln, "
+          [ "$BUILD"  = "failure" ] && FAILED_JOBS="${FAILED_JOBS}Build, "
+          [ "$DOCKER" = "failure" ] && FAILED_JOBS="${FAILED_JOBS}Docker, "
+          [ "$SCAN"   = "failure" ] && FAILED_JOBS="${FAILED_JOBS}Scan, "
+          FAILED_JOBS="${FAILED_JOBS%, }"
+          echo "failed_jobs=${FAILED_JOBS}" >> "$GITHUB_OUTPUT"
+
           # ถ้ามี failure → fail, ถ้ามี cancelled → partial, ไม่งั้น pass
           if [[ "$LINT" == "failure" || "$TEST" == "failure" || "$VULN" == "failure" || "$BUILD" == "failure" || "$DOCKER" == "failure" || "$SCAN" == "failure" ]]; then
             echo "result=failure" >> "$GITHUB_OUTPUT"
@@ -345,11 +356,22 @@ jobs:
         id: payload
         run: |
           STATUS="${{ steps.status.outputs.result }}"
+          FAILED_JOBS="${{ steps.status.outputs.failed_jobs }}"
           BRANCH="${{ github.ref_name }}"
           SHA=$(echo "${{ github.sha }}" | cut -c1-7)
           ACTOR="${{ github.actor }}"
           RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           COMMIT_MSG=$(echo '${{ github.event.head_commit.message }}' | head -1 | cut -c1-80)
+          EVENT="${{ github.event_name }}"
+
+          # PR info (ถ้าเป็น pull_request)
+          PR_INFO=""
+          if [ "$EVENT" = "pull_request" ]; then
+            PR_NUM="${{ github.event.pull_request.number }}"
+            PR_TITLE=$(echo '${{ github.event.pull_request.title }}' | cut -c1-80)
+            PR_INFO="PR #${PR_NUM}: ${PR_TITLE}"
+            BRANCH="${{ github.head_ref }} → ${{ github.base_ref }}"
+          fi
 
           # Status emoji + color
           if [ "$STATUS" = "success" ]; then
@@ -386,6 +408,18 @@ jobs:
 
           JOBS_STATUS="${LINT_ICON} Lint  ${TEST_ICON} Test  ${VULN_ICON} Vuln\n${BUILD_ICON} Build  ${DOCKER_ICON} Docker  ${SCAN_ICON} Scan"
 
+          # Failure details field (เฉพาะเวลา fail)
+          FAILURE_FIELD=""
+          if [ "$STATUS" = "failure" ] && [ -n "$FAILED_JOBS" ]; then
+            FAILURE_FIELD=",{ \"name\": \"⚠ Failed Steps\", \"value\": \"${FAILED_JOBS}\\n[View Logs](${RUN_URL})\", \"inline\": false }"
+          fi
+
+          # PR field (เฉพาะ pull_request event)
+          PR_FIELD=""
+          if [ -n "$PR_INFO" ]; then
+            PR_FIELD=",{ \"name\": \"Pull Request\", \"value\": \"${PR_INFO}\", \"inline\": false }"
+          fi
+
           # Build Discord embed payload (rich format)
           cat > payload.json <<EOFPAYLOAD
           {
@@ -398,6 +432,8 @@ jobs:
                 { "name": "Author", "value": "${ACTOR}", "inline": true },
                 { "name": "Message", "value": "${COMMIT_MSG}", "inline": false },
                 { "name": "Jobs", "value": "${JOBS_STATUS}", "inline": false }
+                ${PR_FIELD}
+                ${FAILURE_FIELD}
               ],
               "url": "${RUN_URL}",
               "footer": { "text": "ANC Portal CI" },

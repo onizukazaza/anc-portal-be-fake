@@ -37,9 +37,9 @@ func NewAuthController(service *app.Service) AuthController {
 // @Produce json
 // @Param request body loginRequest true "Login payload"
 // @Success 200 {object} dto.ApiResponse "Login success"
-// @Failure 400 {object} dto.ApiResponse "Invalid request body"
-// @Failure 401 {object} dto.ApiResponse "Invalid credentials"
-// @Failure 500 {object} dto.ApiResponse "Internal error"
+// @Failure 400 {object} dto.ErrorResponse "trace_id: auth-bind-failed — request body ไม่ถูกต้อง"
+// @Failure 401 {object} dto.ErrorResponse "trace_id: auth-invalid-creds — username/password ไม่ถูกต้อง"
+// @Failure 500 {object} dto.ErrorResponse "trace_id: auth-internal-error — เกิดข้อผิดพลาดภายใน auth service"
 // @Router /auth/login [post]
 func (h *Handler) Login(c *fiber.Ctx) error {
 	ctx, span := appOtel.Tracer(appOtel.TracerAuthHandler).Start(c.UserContext(), "Login")
@@ -53,9 +53,9 @@ func (h *Handler) Login(c *fiber.Ctx) error {
 	session, err := h.service.Login(ctx, req.Username, req.Password)
 	if err != nil {
 		if errors.Is(err, app.ErrInvalidCredentials) {
-			return dto.Error(c, fiber.StatusUnauthorized, "invalid credentials")
+			return dto.ErrorWithTrace(c, fiber.StatusUnauthorized, "invalid credentials", dto.TraceAuthBadLogin)
 		}
-		return dto.Error(c, fiber.StatusInternalServerError, "internal error")
+		return dto.ErrorWithTrace(c, fiber.StatusInternalServerError, "internal error", dto.TraceAuthInternalError)
 	}
 
 	return dto.Success(c, fiber.StatusOK, session)

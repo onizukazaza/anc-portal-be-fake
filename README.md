@@ -105,10 +105,11 @@ anc-portal-be/
 │   │   ├── cmi/           ← พรบ. เดี่ยว
 │   │   ├── quotation/     ← ใบเสนอราคา
 │   │   ├── externaldb/    ← External DB health check
+│   │   ├── webhook/       ← GitHub Webhook → Discord notification
 │   │   ├── policy/        ← กรมธรรม์ (future)
 │   │   └── payment/       ← การชำระเงิน (future)
 │   ├── database/          ← DB connection + migration
-│   ├── shared/            ← Shared code (dto, enum, pagination, validator, utils)
+│   ├── shared/            ← Shared code (dto, enum, error codes, pagination, validator)
 │   ├── testkit/           ← Test assertion library
 │   ├── import/            ← CSV importers
 │   └── sync/              ← Data sync framework
@@ -169,6 +170,10 @@ anc-portal-be/
 | [Unit Test Guide](documents/testing/unit-test-guide.md) | Test patterns, testkit, fakes, กฎการเขียน test |
 | [Microservice Readiness](documents/architecture/microservice-readiness.md) | Microservice คืออะไร, readiness score, แผน extract |
 | [CI/CD Guide](documents/cicd/ci-cd-guide.md) | CI/CD pipeline, GitHub Actions, Docker build, K8s deploy |
+| [CI/CD Pipeline Explained](documents/cicd/ci-cd-pipeline-explained.md) | อธิบายทุกขั้นตอน CI/CD — Lint, Test, Vuln, Build |
+| [Project Structure](documents/architecture/project-structure.md) | Directory layout, module map, layer descriptions |
+| [Gaps & Todos](documents/architecture/gaps-and-todos.md) | Gap analysis, improvement tracking, quality score |
+| [Unit Test Summary](documents/testing/unit-test-summary.md) | Test architecture summary — patterns, counts, coverage |
 | [Import Data](cmd/import/import_data_guide.md) | CSV import — insurer, province, user |
 
 ---

@@ -1,6 +1,6 @@
 # Swagger (OpenAPI) — คู่มือการใช้งาน
 
-> **v2.0** — Last updated: March 2026
+> **v2.1** — Last updated: March 2026
 >
 > Swagger สร้าง API documentation อัตโนมัติจาก code annotation
 > พร้อม UI สำหรับทดสอบ API ได้ทันที
@@ -22,6 +22,7 @@
     - [เข้าใช้งาน](#เข้าใช้งาน)
     - [ตัวอย่าง Annotation](#ตัวอย่าง-annotation)
   - [Endpoints ที่มี](#endpoints-ที่มี)
+  - [Error Response + TraceId](#error-response--traceid)
   - [เครื่องมือเปรียบเทียบ](#เครื่องมือเปรียบเทียบ)
 
 ---
@@ -102,11 +103,13 @@ http://localhost:20000/swagger/index.html
 // @Produce      json
 // @Param        job_id path string true "Job ID"
 // @Success      200 {object} dto.ApiResponse "CMI policy data"
-// @Failure      400 {object} dto.ApiResponse "Job ID is required"
-// @Failure      404 {object} dto.ApiResponse "Job not found"
-// @Failure      500 {object} dto.ApiResponse "Internal error"
+// @Failure      400 {object} dto.ErrorResponse "trace_id: cmi-job-id-required"
+// @Failure      404 {object} dto.ErrorResponse "trace_id: cmi-job-not-found"
+// @Failure      500 {object} dto.ErrorResponse "trace_id: cmi-internal-error"
 // @Router       /cmi/{job_id}/request-policy-single-cmi [get]
 ```
+
+> **v2.1 เปลี่ยนแปลง:** `@Failure` เปลี่ยนจาก `dto.ApiResponse` → `dto.ErrorResponse` เพื่อแสดง `trace_id` ใน Swagger UI
 
 ---
 
@@ -118,6 +121,55 @@ http://localhost:20000/swagger/index.html
 | ExternalDB | `GET /external-db/health`, `GET /external-db/health/{name}` | Database health check |
 | Quotation | `GET /quotations/{id}`, `GET /quotations` | ใบเสนอราคา |
 | CMI | `GET /cmi/{job_id}/request-policy-single-cmi` | งาน พรบ. เดี่ยว |
+| Webhook | `POST /webhook/github` | GitHub webhook receiver |
+
+---
+
+## Error Response + TraceId
+
+ตั้งแต่ v1.1.0 ทุก error response จะมี `trace_id` ใน `result` เพื่อระบุจุดที่เกิด error:
+
+```json
+{
+  "status": "ERROR",
+  "status_code": 404,
+  "message": "quotation not found",
+  "result": {
+    "trace_id": "qt-not-found"
+  }
+}
+```
+
+### Response Structs
+
+| Struct | ใช้เมื่อ | ไฟล์ |
+|---|---|---|
+| `dto.ApiResponse` | Success response | `internal/shared/dto/response.go` |
+| `dto.ErrorResponse` | Error response (มี trace_id) | `internal/shared/dto/response.go` |
+| `dto.ErrorResult` | trace_id object | `internal/shared/dto/response.go` |
+
+### Error Code Catalog
+
+Trace ID ทั้งหมดอยู่ใน `internal/shared/dto/error_codes.go`:
+
+| Module | Trace ID | Code | คำอธิบาย |
+|---|---|---|---|
+| Auth | `auth-bind-failed` | 10001 | request body ไม่ถูกต้อง |
+| Auth | `auth-invalid-creds` | 10002 | username/password ไม่ถูกต้อง |
+| Auth | `auth-internal-error` | 10003 | เกิดข้อผิดพลาดภายใน |
+| Quotation | `qt-id-required` | 11001 | ไม่ได้ส่ง quotation id |
+| Quotation | `qt-not-found` | 11002 | ไม่พบ quotation |
+| Quotation | `qt-internal-error` | 11003 | เกิดข้อผิดพลาดภายใน |
+| Quotation | `qt-customer-id-required` | 11004 | ไม่ได้ส่ง customerId |
+| Quotation | `qt-list-internal-error` | 11005 | เกิดข้อผิดพลาดขณะดึงรายการ |
+| CMI | `cmi-job-id-required` | 12001 | ไม่ได้ส่ง job_id |
+| CMI | `cmi-job-not-found` | 12002 | ไม่พบ job |
+| CMI | `cmi-internal-error` | 12003 | เกิดข้อผิดพลาดภายใน |
+| ExternalDB | `extdb-name-required` | 13001 | ไม่ได้ส่ง database name |
+| ExternalDB | `extdb-not-found` | 13002 | ไม่พบ database |
+| ExternalDB | `extdb-unhealthy` | 13003 | database ไม่สามารถเชื่อมต่อได้ |
+| Webhook | `wh-invalid-signature` | 14001 | GitHub signature ไม่ถูกต้อง |
+| Webhook | `wh-process-failed` | 14002 | ประมวลผล webhook ล้มเหลว |
 
 ---
 
@@ -133,4 +185,4 @@ http://localhost:20000/swagger/index.html
 
 ---
 
-> **v2.0** — March 2026 | ANC Portal Backend Team
+> **v2.1** — March 2026 | ANC Portal Backend Team

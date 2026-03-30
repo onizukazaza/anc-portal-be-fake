@@ -1,6 +1,6 @@
 basePath: /v1
 definitions:
-  github_com_anc-portal_anc-portal-be_internal_shared_dto.ApiResponse:
+  github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ApiResponse:
     properties:
       message:
         description: คำอธิบาย ("success", "created successfully", "not found")
@@ -14,6 +14,32 @@ definitions:
         description: HTTP status code (200, 201, 400, 500, ...)
         type: integer
     type: object
+  github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ErrorResponse:
+    properties:
+      message:
+        description: Error description
+        example: quotation not found
+        type: string
+      result:
+        allOf:
+        - $ref: '#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ErrorResult'
+        description: Contains trace_id
+      status:
+        description: '"ERROR"'
+        example: ERROR
+        type: string
+      status_code:
+        description: HTTP status code
+        example: 400
+        type: integer
+    type: object
+  github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ErrorResult:
+    properties:
+      trace_id:
+        description: Error trace identifier
+        example: qt-not-found
+        type: string
+    type: object
   internal_modules_auth_adapters_http.loginRequest:
     properties:
       password:
@@ -22,13 +48,43 @@ definitions:
       username:
         example: admin
         type: string
+    required:
+    - password
+    - username
     type: object
 host: localhost:20000
 info:
   contact: {}
-  description: Backend API for ANC Insurance Portal
+  description: |-
+    Backend API for ANC Insurance Portal
+
+    ## Error Response Format
+    ทุก error response จะมี `trace_id` ใน `result` เพื่อระบุจุดที่เกิด error
+    ```json
+    {"status":"ERROR","status_code":404,"message":"quotation not found","result":{"trace_id":"qt-not-found"}}
+    ```
+
+    ## Error Code Catalog
+    | Module | Trace ID | Code | คำอธิบาย |
+    |--------|----------|------|---------|
+    | Auth | auth-bind-failed | 10001 | request body ไม่ถูกต้อง |
+    | Auth | auth-invalid-creds | 10002 | username/password ไม่ถูกต้อง |
+    | Auth | auth-internal-error | 10003 | เกิดข้อผิดพลาดภายใน auth service |
+    | Quotation | qt-id-required | 11001 | ไม่ได้ส่ง quotation id |
+    | Quotation | qt-not-found | 11002 | ไม่พบ quotation |
+    | Quotation | qt-internal-error | 11003 | เกิดข้อผิดพลาดภายใน quotation service |
+    | Quotation | qt-customer-id-required | 11004 | ไม่ได้ส่ง customerId |
+    | Quotation | qt-list-internal-error | 11005 | เกิดข้อผิดพลาดขณะดึงรายการ quotation |
+    | CMI | cmi-job-id-required | 12001 | ไม่ได้ส่ง job_id |
+    | CMI | cmi-job-not-found | 12002 | ไม่พบ job |
+    | CMI | cmi-internal-error | 12003 | เกิดข้อผิดพลาดภายใน CMI service |
+    | ExternalDB | extdb-name-required | 13001 | ไม่ได้ส่ง database name |
+    | ExternalDB | extdb-not-found | 13002 | ไม่พบ database ที่ระบุ |
+    | ExternalDB | extdb-unhealthy | 13003 | database ไม่สามารถเชื่อมต่อได้ |
+    | Webhook | wh-invalid-signature | 14001 | GitHub signature ไม่ถูกต้อง |
+    | Webhook | wh-process-failed | 14002 | ประมวลผล webhook ล้มเหลว |
   title: ANC Portal API
-  version: 1.0.0
+  version: 1.1.0
 paths:
   /auth/login:
     post:
@@ -49,19 +105,19 @@ paths:
         "200":
           description: Login success
           schema:
-            $ref: '#/definitions/github_com_anc-portal_anc-portal-be_internal_shared_dto.ApiResponse'
+            $ref: '#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ApiResponse'
         "400":
-          description: Invalid request body
+          description: 'trace_id: auth-bind-failed — request body ไม่ถูกต้อง'
           schema:
-            $ref: '#/definitions/github_com_anc-portal_anc-portal-be_internal_shared_dto.ApiResponse'
+            $ref: '#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ErrorResponse'
         "401":
-          description: Invalid credentials
+          description: 'trace_id: auth-invalid-creds — username/password ไม่ถูกต้อง'
           schema:
-            $ref: '#/definitions/github_com_anc-portal_anc-portal-be_internal_shared_dto.ApiResponse'
+            $ref: '#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ErrorResponse'
         "500":
-          description: Internal error
+          description: 'trace_id: auth-internal-error — เกิดข้อผิดพลาดภายใน auth service'
           schema:
-            $ref: '#/definitions/github_com_anc-portal_anc-portal-be_internal_shared_dto.ApiResponse'
+            $ref: '#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ErrorResponse'
       summary: Login user
       tags:
       - Auth
@@ -82,19 +138,19 @@ paths:
         "200":
           description: CMI policy data
           schema:
-            $ref: '#/definitions/github_com_anc-portal_anc-portal-be_internal_shared_dto.ApiResponse'
+            $ref: '#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ApiResponse'
         "400":
-          description: Job ID is required
+          description: 'trace_id: cmi-job-id-required — ไม่ได้ส่ง job_id'
           schema:
-            $ref: '#/definitions/github_com_anc-portal_anc-portal-be_internal_shared_dto.ApiResponse'
+            $ref: '#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ErrorResponse'
         "404":
-          description: Job not found
+          description: 'trace_id: cmi-job-not-found — ไม่พบ job'
           schema:
-            $ref: '#/definitions/github_com_anc-portal_anc-portal-be_internal_shared_dto.ApiResponse'
+            $ref: '#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ErrorResponse'
         "500":
-          description: Internal error
+          description: 'trace_id: cmi-internal-error — เกิดข้อผิดพลาดภายใน CMI service'
           schema:
-            $ref: '#/definitions/github_com_anc-portal_anc-portal-be_internal_shared_dto.ApiResponse'
+            $ref: '#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get CMI policy by job ID
@@ -111,7 +167,7 @@ paths:
         "200":
           description: All database statuses
           schema:
-            $ref: '#/definitions/github_com_anc-portal_anc-portal-be_internal_shared_dto.ApiResponse'
+            $ref: '#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ApiResponse'
       security:
       - BearerAuth: []
       summary: Check all external databases
@@ -134,15 +190,19 @@ paths:
         "200":
           description: Database status
           schema:
-            $ref: '#/definitions/github_com_anc-portal_anc-portal-be_internal_shared_dto.ApiResponse'
+            $ref: '#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ApiResponse'
         "400":
-          description: Name is required
+          description: 'trace_id: extdb-name-required — ไม่ได้ส่ง database name'
           schema:
-            $ref: '#/definitions/github_com_anc-portal_anc-portal-be_internal_shared_dto.ApiResponse'
+            $ref: '#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ErrorResponse'
         "404":
-          description: Database not found
+          description: 'trace_id: extdb-not-found — ไม่พบ database ที่ระบุ'
           schema:
-            $ref: '#/definitions/github_com_anc-portal_anc-portal-be_internal_shared_dto.ApiResponse'
+            $ref: '#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ErrorResponse'
+        "503":
+          description: 'trace_id: extdb-unhealthy — database ไม่สามารถเชื่อมต่อได้'
+          schema:
+            $ref: '#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Check external database by name
@@ -193,15 +253,16 @@ paths:
         "200":
           description: Paginated quotations
           schema:
-            $ref: '#/definitions/github_com_anc-portal_anc-portal-be_internal_shared_dto.ApiResponse'
+            $ref: '#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ApiResponse'
         "400":
-          description: Customer ID is required
+          description: 'trace_id: qt-customer-id-required — ไม่ได้ส่ง customerId'
           schema:
-            $ref: '#/definitions/github_com_anc-portal_anc-portal-be_internal_shared_dto.ApiResponse'
+            $ref: '#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ErrorResponse'
         "500":
-          description: Internal error
+          description: 'trace_id: qt-list-internal-error — เกิดข้อผิดพลาดขณะดึงรายการ
+            quotation'
           schema:
-            $ref: '#/definitions/github_com_anc-portal_anc-portal-be_internal_shared_dto.ApiResponse'
+            $ref: '#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ErrorResponse'
       security:
       - BearerAuth: []
       summary: List quotations by customer
@@ -224,20 +285,63 @@ paths:
         "200":
           description: Quotation data
           schema:
-            $ref: '#/definitions/github_com_anc-portal_anc-portal-be_internal_shared_dto.ApiResponse'
+            $ref: '#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ApiResponse'
+        "400":
+          description: 'trace_id: qt-id-required — ไม่ได้ส่ง quotation id'
+          schema:
+            $ref: '#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ErrorResponse'
         "404":
-          description: Quotation not found
+          description: 'trace_id: qt-not-found — ไม่พบ quotation'
           schema:
-            $ref: '#/definitions/github_com_anc-portal_anc-portal-be_internal_shared_dto.ApiResponse'
+            $ref: '#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ErrorResponse'
         "500":
-          description: Internal error
+          description: 'trace_id: qt-internal-error — เกิดข้อผิดพลาดภายใน quotation
+            service'
           schema:
-            $ref: '#/definitions/github_com_anc-portal_anc-portal-be_internal_shared_dto.ApiResponse'
+            $ref: '#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get quotation by ID
       tags:
       - Quotation
+  /webhooks/github:
+    post:
+      consumes:
+      - application/json
+      description: Receives a push event from GitHub webhook and sends notification
+        to Discord
+      parameters:
+      - description: GitHub HMAC signature
+        in: header
+        name: X-Hub-Signature-256
+        type: string
+      - description: GitHub event type
+        in: header
+        name: X-GitHub-Event
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Event processed
+          schema:
+            $ref: '#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ApiResponse'
+        "400":
+          description: Unsupported event
+          schema:
+            $ref: '#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ApiResponse'
+        "401":
+          description: 'trace_id: wh-invalid-signature — GitHub signature ไม่ถูกต้อง'
+          schema:
+            $ref: '#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ErrorResponse'
+        "500":
+          description: 'trace_id: wh-process-failed — ประมวลผล webhook ล้มเหลว'
+          schema:
+            $ref: '#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ErrorResponse'
+      summary: Receive GitHub push webhook
+      tags:
+      - Webhook
 schemes:
 - http
 securityDefinitions:

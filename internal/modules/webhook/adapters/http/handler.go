@@ -35,9 +35,9 @@ func NewWebhookController(service *app.Service) WebhookController {
 // @Param X-Hub-Signature-256 header string false "GitHub HMAC signature"
 // @Param X-GitHub-Event header string true "GitHub event type"
 // @Success 200 {object} dto.ApiResponse "Event processed"
-// @Failure 400 {object} dto.ApiResponse "Unsupported event or bad request"
-// @Failure 401 {object} dto.ApiResponse "Invalid signature"
-// @Failure 500 {object} dto.ApiResponse "Internal error"
+// @Failure 400 {object} dto.ApiResponse "Unsupported event"
+// @Failure 401 {object} dto.ErrorResponse "trace_id: wh-invalid-signature — GitHub signature ไม่ถูกต้อง"
+// @Failure 500 {object} dto.ErrorResponse "trace_id: wh-process-failed — ประมวลผล webhook ล้มเหลว"
 // @Router /webhooks/github [post]
 func (h *Handler) HandleGitHubPush(c *fiber.Ctx) error {
 	ctx, span := appOtel.Tracer(appOtel.TracerWebhookHandler).Start(c.UserContext(), "HandleGitHubPush")
@@ -53,9 +53,9 @@ func (h *Handler) HandleGitHubPush(c *fiber.Ctx) error {
 
 	if err := h.service.HandlePush(ctx, rawBody, signature); err != nil {
 		if errors.Is(err, app.ErrInvalidSignature) {
-			return dto.Error(c, fiber.StatusUnauthorized, "invalid signature")
+			return dto.ErrorWithTrace(c, fiber.StatusUnauthorized, "invalid signature", dto.TraceWHInvalidSignature)
 		}
-		return dto.Error(c, fiber.StatusInternalServerError, "failed to process webhook")
+		return dto.ErrorWithTrace(c, fiber.StatusInternalServerError, "failed to process webhook", dto.TraceWHProcessFailed)
 	}
 
 	return dto.Success(c, fiber.StatusOK, fiber.Map{"message": "push event processed"})

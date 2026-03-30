@@ -7,8 +7,34 @@
 // air -c .air.local.toml
 
 // @title ANC Portal API
-// @version 1.0.0
+// @version 1.1.0
 // @description Backend API for ANC Insurance Portal
+// @description
+// @description ## Error Response Format
+// @description ทุก error response จะมี `trace_id` ใน `result` เพื่อระบุจุดที่เกิด error
+// @description ```json
+// @description {"status":"ERROR","status_code":404,"message":"quotation not found","result":{"trace_id":"qt-not-found"}}
+// @description ```
+// @description
+// @description ## Error Code Catalog
+// @description | Module | Trace ID | Code | คำอธิบาย |
+// @description |--------|----------|------|---------|
+// @description | Auth | auth-bind-failed | 10001 | request body ไม่ถูกต้อง |
+// @description | Auth | auth-invalid-creds | 10002 | username/password ไม่ถูกต้อง |
+// @description | Auth | auth-internal-error | 10003 | เกิดข้อผิดพลาดภายใน auth service |
+// @description | Quotation | qt-id-required | 11001 | ไม่ได้ส่ง quotation id |
+// @description | Quotation | qt-not-found | 11002 | ไม่พบ quotation |
+// @description | Quotation | qt-internal-error | 11003 | เกิดข้อผิดพลาดภายใน quotation service |
+// @description | Quotation | qt-customer-id-required | 11004 | ไม่ได้ส่ง customerId |
+// @description | Quotation | qt-list-internal-error | 11005 | เกิดข้อผิดพลาดขณะดึงรายการ quotation |
+// @description | CMI | cmi-job-id-required | 12001 | ไม่ได้ส่ง job_id |
+// @description | CMI | cmi-job-not-found | 12002 | ไม่พบ job |
+// @description | CMI | cmi-internal-error | 12003 | เกิดข้อผิดพลาดภายใน CMI service |
+// @description | ExternalDB | extdb-name-required | 13001 | ไม่ได้ส่ง database name |
+// @description | ExternalDB | extdb-not-found | 13002 | ไม่พบ database ที่ระบุ |
+// @description | ExternalDB | extdb-unhealthy | 13003 | database ไม่สามารถเชื่อมต่อได้ |
+// @description | Webhook | wh-invalid-signature | 14001 | GitHub signature ไม่ถูกต้อง |
+// @description | Webhook | wh-process-failed | 14002 | ประมวลผล webhook ล้มเหลว |
 // @host localhost:20000
 // @BasePath /v1
 // @schemes http

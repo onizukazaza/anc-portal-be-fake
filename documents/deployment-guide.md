@@ -1,6 +1,6 @@
 # Deployment Guide — ANC Portal Backend
 
-> **v2.0** — Last updated: March 2026
+> **v2.1** — Last updated: March 2026
 >
 > คู่มือการ deploy ตั้งแต่ Local Development จนถึง Production
 > ครอบคลุม Docker, Kubernetes, และ CI/CD pipeline
@@ -75,6 +75,10 @@ copy .env.example .env.local
 
 # 7. รัน Worker (tab ใหม่)
 .\run.ps1 worker
+
+# 8. รัน Local CI (ตรวจสอบก่อน push)
+.\run.ps1 ci
+# Lint → Test → Vuln → Build + Discord notification
 ```
 
 ### Observability Stack (optional)
@@ -361,6 +365,7 @@ kubectl rollout undo deployment/anc-portal-api -n anc-portal --to-revision=3
 
 ### Staging
 
+- [ ] Local CI ผ่านทั้งหมด (`run.ps1 ci` — Lint, Test, Vuln, Build)
 - [ ] Unit tests ผ่านทั้งหมด (`go test ./...`)
 - [ ] Docker build สำเร็จ
 - [ ] Migration tested locally
@@ -382,4 +387,4 @@ kubectl rollout undo deployment/anc-portal-api -n anc-portal --to-revision=3
 
 ---
 
-> **v2.0** — March 2026 | ANC Portal Backend Team
+> **v2.1** — March 2026 | ANC Portal Backend Team

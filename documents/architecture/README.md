@@ -1,6 +1,6 @@
 # Software Architecture — ANC Portal Backend
 
-> **v2.0** — Last updated: March 2026
+> **v2.1** — Last updated: March 2026
 >
 > Style: **Modular Monolith + Hexagonal Architecture (Ports & Adapters)**
 >
@@ -421,15 +421,35 @@ type Module interface {
 ### Standard Response
 
 ```go
+// Success
 ApiResponse{
     Status:     "OK",
     StatusCode: 200,
     Message:    "success",
     Result:     ResultData{ Data: ..., Meta: ... },
 }
+
+// Error (with trace_id)
+ApiResponse{
+    Status:     "ERROR",
+    StatusCode: 404,
+    Message:    "quotation not found",
+    Result:     map[string]string{"trace_id": "qt-not-found"},
+}
 ```
 
-Helpers: `Success()`, `SuccessWithMessage()`, `SuccessWithMeta()`, `Error()`
+Helpers: `Success()`, `SuccessWithMessage()`, `SuccessWithMeta()`, `Error()`, `ErrorWithTrace()`
+
+### Error Code Catalog (TraceId)
+
+ทุก error response มี `trace_id` ใน `result` เพื่อระบุจุดที่เกิด error:
+
+- Constants: `internal/shared/dto/error_codes.go` (15 trace codes, 5 modules)
+- Structs: `dto.ErrorResponse`, `dto.ErrorResult` สำหรับ Swagger
+- Helper: `dto.ErrorWithTrace(c, status, message, traceID)`
+- Swagger: ทุก `@Failure` annotation ใช้ `dto.ErrorResponse` + trace_id description
+
+ดูรายละเอียด: [Swagger Overview](swagger-overview.md#error-response--traceid)
 
 ### Pagination — Fluent SQL Builder
 
@@ -515,6 +535,9 @@ Phase 1 (ปัจจุบัน)          Phase 2                Phase 3      
 - Request Validation — go-playground/validator ผ่าน BindAndValidate helper
 - Access Logging — zerolog structured logging ทุก request พร้อม latency, status, request_id
 - Worker Health Probe — HTTP /healthz สำหรับ K8s liveness/readiness
+- CI/CD Pipeline — 7-job CI (lint, test, vuln, build, docker, scan, notify) + CD staging/production + release
+- Discord Notification — ทุก workflow (CI, deploy, release) + local `run.ps1 ci` พร้อม failure details
+- Error Code Catalog (TraceId) — 15 trace codes แยกตาม module พร้อม Swagger integration ([`dto/error_codes.go`](../../internal/shared/dto/error_codes.go))
 - Test Infrastructure — `internal/testkit` generic assertions + hand-written fakes ไม่พึ่ง external deps ([ดูคู่มือ](../testing/unit-test-guide.md))
 
 ### จุดอ่อน
@@ -525,4 +548,4 @@ Phase 1 (ปัจจุบัน)          Phase 2                Phase 3      
 
 ---
 
-> **v2.0** — March 2026 | ANC Portal Backend Team
+> **v2.1** — March 2026 | ANC Portal Backend Team

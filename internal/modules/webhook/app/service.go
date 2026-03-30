@@ -36,7 +36,7 @@ func NewService(secret string, notifier ports.Notifier) *Service {
 
 // HandlePush processes a GitHub push event.
 func (s *Service) HandlePush(ctx context.Context, rawBody []byte, signatureHeader string) error {
-	ctx, span := appOtel.Tracer(appOtel.TracerWebhookService).Start(ctx, "HandlePush")
+	_, span := appOtel.Tracer(appOtel.TracerWebhookService).Start(ctx, "HandlePush")
 	defer span.End()
 
 	// Verify signature if secret is configured
@@ -61,6 +61,11 @@ func (s *Service) HandlePush(ctx context.Context, rawBody []byte, signatureHeade
 	// Send notification asynchronously — don't block GitHub's response.
 	// GitHub has a 10s timeout; if Discord is slow, it would cause retries.
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.L().Error().Interface("panic", r).Msg("panic in push notification goroutine")
+			}
+		}()
 		notifyCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 		defer cancel()
 		if err := s.notifier.NotifyPush(notifyCtx, &event); err != nil {

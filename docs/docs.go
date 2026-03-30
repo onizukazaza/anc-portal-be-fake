@@ -43,25 +43,25 @@ const docTemplate = `{
                     "200": {
                         "description": "Login success",
                         "schema": {
-                            "$ref": "#/definitions/github_com_anc-portal_anc-portal-be_internal_shared_dto.ApiResponse"
+                            "$ref": "#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ApiResponse"
                         }
                     },
                     "400": {
-                        "description": "Invalid request body",
+                        "description": "trace_id: auth-bind-failed — request body ไม่ถูกต้อง",
                         "schema": {
-                            "$ref": "#/definitions/github_com_anc-portal_anc-portal-be_internal_shared_dto.ApiResponse"
+                            "$ref": "#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ErrorResponse"
                         }
                     },
                     "401": {
-                        "description": "Invalid credentials",
+                        "description": "trace_id: auth-invalid-creds — username/password ไม่ถูกต้อง",
                         "schema": {
-                            "$ref": "#/definitions/github_com_anc-portal_anc-portal-be_internal_shared_dto.ApiResponse"
+                            "$ref": "#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Internal error",
+                        "description": "trace_id: auth-internal-error — เกิดข้อผิดพลาดภายใน auth service",
                         "schema": {
-                            "$ref": "#/definitions/github_com_anc-portal_anc-portal-be_internal_shared_dto.ApiResponse"
+                            "$ref": "#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ErrorResponse"
                         }
                     }
                 }
@@ -98,25 +98,25 @@ const docTemplate = `{
                     "200": {
                         "description": "CMI policy data",
                         "schema": {
-                            "$ref": "#/definitions/github_com_anc-portal_anc-portal-be_internal_shared_dto.ApiResponse"
+                            "$ref": "#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ApiResponse"
                         }
                     },
                     "400": {
-                        "description": "Job ID is required",
+                        "description": "trace_id: cmi-job-id-required — ไม่ได้ส่ง job_id",
                         "schema": {
-                            "$ref": "#/definitions/github_com_anc-portal_anc-portal-be_internal_shared_dto.ApiResponse"
+                            "$ref": "#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ErrorResponse"
                         }
                     },
                     "404": {
-                        "description": "Job not found",
+                        "description": "trace_id: cmi-job-not-found — ไม่พบ job",
                         "schema": {
-                            "$ref": "#/definitions/github_com_anc-portal_anc-portal-be_internal_shared_dto.ApiResponse"
+                            "$ref": "#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Internal error",
+                        "description": "trace_id: cmi-internal-error — เกิดข้อผิดพลาดภายใน CMI service",
                         "schema": {
-                            "$ref": "#/definitions/github_com_anc-portal_anc-portal-be_internal_shared_dto.ApiResponse"
+                            "$ref": "#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ErrorResponse"
                         }
                     }
                 }
@@ -144,7 +144,7 @@ const docTemplate = `{
                     "200": {
                         "description": "All database statuses",
                         "schema": {
-                            "$ref": "#/definitions/github_com_anc-portal_anc-portal-be_internal_shared_dto.ApiResponse"
+                            "$ref": "#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ApiResponse"
                         }
                     }
                 }
@@ -181,19 +181,25 @@ const docTemplate = `{
                     "200": {
                         "description": "Database status",
                         "schema": {
-                            "$ref": "#/definitions/github_com_anc-portal_anc-portal-be_internal_shared_dto.ApiResponse"
+                            "$ref": "#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ApiResponse"
                         }
                     },
                     "400": {
-                        "description": "Name is required",
+                        "description": "trace_id: extdb-name-required — ไม่ได้ส่ง database name",
                         "schema": {
-                            "$ref": "#/definitions/github_com_anc-portal_anc-portal-be_internal_shared_dto.ApiResponse"
+                            "$ref": "#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ErrorResponse"
                         }
                     },
                     "404": {
-                        "description": "Database not found",
+                        "description": "trace_id: extdb-not-found — ไม่พบ database ที่ระบุ",
                         "schema": {
-                            "$ref": "#/definitions/github_com_anc-portal_anc-portal-be_internal_shared_dto.ApiResponse"
+                            "$ref": "#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "trace_id: extdb-unhealthy — database ไม่สามารถเชื่อมต่อได้",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ErrorResponse"
                         }
                     }
                 }
@@ -267,19 +273,19 @@ const docTemplate = `{
                     "200": {
                         "description": "Paginated quotations",
                         "schema": {
-                            "$ref": "#/definitions/github_com_anc-portal_anc-portal-be_internal_shared_dto.ApiResponse"
+                            "$ref": "#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ApiResponse"
                         }
                     },
                     "400": {
-                        "description": "Customer ID is required",
+                        "description": "trace_id: qt-customer-id-required — ไม่ได้ส่ง customerId",
                         "schema": {
-                            "$ref": "#/definitions/github_com_anc-portal_anc-portal-be_internal_shared_dto.ApiResponse"
+                            "$ref": "#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Internal error",
+                        "description": "trace_id: qt-list-internal-error — เกิดข้อผิดพลาดขณะดึงรายการ quotation",
                         "schema": {
-                            "$ref": "#/definitions/github_com_anc-portal_anc-portal-be_internal_shared_dto.ApiResponse"
+                            "$ref": "#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ErrorResponse"
                         }
                     }
                 }
@@ -316,19 +322,81 @@ const docTemplate = `{
                     "200": {
                         "description": "Quotation data",
                         "schema": {
-                            "$ref": "#/definitions/github_com_anc-portal_anc-portal-be_internal_shared_dto.ApiResponse"
+                            "$ref": "#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ApiResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "trace_id: qt-id-required — ไม่ได้ส่ง quotation id",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ErrorResponse"
                         }
                     },
                     "404": {
-                        "description": "Quotation not found",
+                        "description": "trace_id: qt-not-found — ไม่พบ quotation",
                         "schema": {
-                            "$ref": "#/definitions/github_com_anc-portal_anc-portal-be_internal_shared_dto.ApiResponse"
+                            "$ref": "#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Internal error",
+                        "description": "trace_id: qt-internal-error — เกิดข้อผิดพลาดภายใน quotation service",
                         "schema": {
-                            "$ref": "#/definitions/github_com_anc-portal_anc-portal-be_internal_shared_dto.ApiResponse"
+                            "$ref": "#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/webhooks/github": {
+            "post": {
+                "description": "Receives a push event from GitHub webhook and sends notification to Discord",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Webhook"
+                ],
+                "summary": "Receive GitHub push webhook",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "GitHub HMAC signature",
+                        "name": "X-Hub-Signature-256",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "GitHub event type",
+                        "name": "X-GitHub-Event",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Event processed",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ApiResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Unsupported event",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ApiResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "trace_id: wh-invalid-signature — GitHub signature ไม่ถูกต้อง",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "trace_id: wh-process-failed — ประมวลผล webhook ล้มเหลว",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ErrorResponse"
                         }
                     }
                 }
@@ -336,7 +404,7 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "github_com_anc-portal_anc-portal-be_internal_shared_dto.ApiResponse": {
+        "github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ApiResponse": {
             "type": "object",
             "properties": {
                 "message": {
@@ -356,8 +424,50 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "description": "Error description",
+                    "type": "string",
+                    "example": "quotation not found"
+                },
+                "result": {
+                    "description": "Contains trace_id",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ErrorResult"
+                        }
+                    ]
+                },
+                "status": {
+                    "description": "\"ERROR\"",
+                    "type": "string",
+                    "example": "ERROR"
+                },
+                "status_code": {
+                    "description": "HTTP status code",
+                    "type": "integer",
+                    "example": 400
+                }
+            }
+        },
+        "github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ErrorResult": {
+            "type": "object",
+            "properties": {
+                "trace_id": {
+                    "description": "Error trace identifier",
+                    "type": "string",
+                    "example": "qt-not-found"
+                }
+            }
+        },
         "internal_modules_auth_adapters_http.loginRequest": {
             "type": "object",
+            "required": [
+                "password",
+                "username"
+            ],
             "properties": {
                 "password": {
                     "type": "string",
@@ -382,12 +492,12 @@ const docTemplate = `{
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "1.0.0",
+	Version:          "1.1.0",
 	Host:             "localhost:20000",
 	BasePath:         "/v1",
 	Schemes:          []string{"http"},
 	Title:            "ANC Portal API",
-	Description:      "Backend API for ANC Insurance Portal",
+	Description:      "Backend API for ANC Insurance Portal\n\n## Error Response Format\nทุก error response จะมี `trace_id` ใน `result` เพื่อระบุจุดที่เกิด error\n```json\n{\"status\":\"ERROR\",\"status_code\":404,\"message\":\"quotation not found\",\"result\":{\"trace_id\":\"qt-not-found\"}}\n```\n\n## Error Code Catalog\n| Module | Trace ID | Code | คำอธิบาย |\n|--------|----------|------|---------|\n| Auth | auth-bind-failed | 10001 | request body ไม่ถูกต้อง |\n| Auth | auth-invalid-creds | 10002 | username/password ไม่ถูกต้อง |\n| Auth | auth-internal-error | 10003 | เกิดข้อผิดพลาดภายใน auth service |\n| Quotation | qt-id-required | 11001 | ไม่ได้ส่ง quotation id |\n| Quotation | qt-not-found | 11002 | ไม่พบ quotation |\n| Quotation | qt-internal-error | 11003 | เกิดข้อผิดพลาดภายใน quotation service |\n| Quotation | qt-customer-id-required | 11004 | ไม่ได้ส่ง customerId |\n| Quotation | qt-list-internal-error | 11005 | เกิดข้อผิดพลาดขณะดึงรายการ quotation |\n| CMI | cmi-job-id-required | 12001 | ไม่ได้ส่ง job_id |\n| CMI | cmi-job-not-found | 12002 | ไม่พบ job |\n| CMI | cmi-internal-error | 12003 | เกิดข้อผิดพลาดภายใน CMI service |\n| ExternalDB | extdb-name-required | 13001 | ไม่ได้ส่ง database name |\n| ExternalDB | extdb-not-found | 13002 | ไม่พบ database ที่ระบุ |\n| ExternalDB | extdb-unhealthy | 13003 | database ไม่สามารถเชื่อมต่อได้ |\n| Webhook | wh-invalid-signature | 14001 | GitHub signature ไม่ถูกต้อง |\n| Webhook | wh-process-failed | 14002 | ประมวลผล webhook ล้มเหลว |",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

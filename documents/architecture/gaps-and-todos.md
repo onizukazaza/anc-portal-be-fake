@@ -1,7 +1,7 @@
 # ANC Portal BE — Gap Analysis & TODO
 
-> **วันที่ตรวจสอบ:** 2026-03-28 (อัพเดต: 2026-03-28)  
-> **สถานะปัจจุบัน:** Score 8.7/10  
+> **วันที่ตรวจสอบ:** 2026-03-28 (อัพเดท: 2026-03-30)  
+> **สถานะปัจจุบัน:** Score 9.0/10  
 > **เป้าหมาย:** Production-Ready Backend
 
 ---
@@ -21,10 +21,14 @@
 ✅ Hybrid Cache (L1+L2)                ✅ Request DTO Validation ← DONE
 ✅ Docker multi-stage                  ❌ Global Error Handler
 ✅ golangci-lint 17 linters            ❌ Domain Validation Methods
-✅ testkit library                     ❌ Error Code Catalog
+✅ testkit library                     ✅ Error Code Catalog (TraceId) ← DONE
 ✅ 174+ test cases pass                ❌ Handler/Adapter Tests
-✅ 9 technical docs                    ❌ 14+ packages 0% coverage
+✅ 10 technical docs                   ❌ 14+ packages 0% coverage
 ✅ Worker Health Probe ← DONE
+✅ Discord CI/CD Notification ← DONE
+✅ Bug Fixes (4 items) ← DONE
+✅ Swagger ErrorResponse + TraceId ← DONE
+✅ CI/CD Pipeline Explained Doc ← DONE
 ```
 
 ---
@@ -147,19 +151,28 @@
 - [x] เพิ่ม readinessProbe ด้วย (httpGet /healthz port 20001)
 - [x] Graceful shutdown สำหรับ health probe server
 
-### H5: Error Code Catalog
+### H5: Error Code Catalog (TraceId System) ✅ DONE
 
-- [ ] สร้าง `internal/shared/apperror/codes.go`
-- [ ] กำหนด error codes มาตรฐาน:
-  - `AUTH_001` — invalid credentials
-  - `AUTH_002` — token expired
-  - `AUTH_003` — insufficient permissions
-  - `CMI_001` — policy not found
-  - `QUO_001` — quotation not found
-  - `VAL_001` — validation failed
-  - `SYS_001` — internal server error
-- [ ] ใช้ `dto.ErrorWithCode()` (มีอยู่แล้วแต่ยังไม่ถูกใช้)
-- [ ] สร้าง `documents/api/error-codes.md` — reference doc
+- [x] สร้าง `internal/shared/dto/error_codes.go` — TraceId constants ทั้งโปรเจกต์
+- [x] กำหนด trace codes ตาม module (15 codes):
+  - Auth (10xxx): `auth-bind-failed`, `auth-invalid-creds`, `auth-internal-error`
+  - Quotation (11xxx): `qt-id-required`, `qt-not-found`, `qt-internal-error`, `qt-customer-id-required`, `qt-list-internal-error`
+  - CMI (12xxx): `cmi-job-id-required`, `cmi-job-not-found`, `cmi-internal-error`
+  - ExternalDB (13xxx): `extdb-name-required`, `extdb-not-found`, `extdb-unhealthy`
+  - Webhook (14xxx): `wh-invalid-signature`, `wh-process-failed`
+- [x] สร้าง `dto.ErrorWithTrace()` helper + `ErrorResponse` / `ErrorResult` structs
+- [x] เปลี่ยน `dto.Error()` → `dto.ErrorWithTrace()` ทุก handler (auth, quotation, cmi, externaldb, webhook)
+- [x] อัพเดต Swagger annotations ทุก endpoint ให้ใช้ `dto.ErrorResponse` พร้อม trace_id
+- [x] Swagger @description ใน `cmd/api/main.go` มี Error Code Catalog table
+- [x] Regenerate docs ด้วย `swag init` สำเร็จ
+
+**ไฟล์ที่สร้าง/แก้ไข:**
+
+- `internal/shared/dto/error_codes.go` — TraceId constants
+- `internal/shared/dto/response.go` — ErrorWithTrace(), ErrorResponse, ErrorResult
+- `internal/modules/*/adapters/http/handler.go` — ทุก handler (5 ไฟล์)
+- `cmd/api/main.go` — Swagger @description + version 1.1.0
+- `docs/` — regenerated (docs.go, swagger.json, swagger.yaml)
 
 ### H6: Handler-Level Tests
 
@@ -271,8 +284,9 @@
 
 ### N4: Test Coverage Gate
 
-- [ ] เพิ่ม coverage threshold ใน CI pipeline (เช่น fail ถ้า < 60%)
-- [ ] อัพเดต `.github/workflows/ci.yml` — เพิ่ม coverage check step
+- [x] CI pipeline มี coverage summary แสดงใน GitHub Step Summary
+- [x] Coverage artifact upload (retention 14 days)
+- [ ] เพิ่ม threshold gate ที่ fail CI ถ้า < 60% (ปัจจุบันเป็น summary เฉยๆ ยังไม่ fail)
 
 ### N5: CSRF Protection
 
@@ -307,7 +321,7 @@ Phase 1 — Security Foundation (Critical)
 Phase 2 — Production Reliability (High)
 ├── H1: Request/Response Logging ✅ DONE
 ├── H2: Global Error Handler
-├── H5: Error Code Catalog
+├── H5: Error Code Catalog (TraceId) ✅ DONE
 └── H7: Domain Validation
 
 Phase 3 — Operational Stability (High)
@@ -334,6 +348,37 @@ Phase 7 — Polish (Nice-to-Have)
 
 ---
 
+## 🛠 Bug Fixes Completed (2026-03-30)
+
+บักที่พบและแก้ไขจากการ code review รอบที่ 1:
+
+### BF1: Webhook Goroutine Panic Recovery ✅
+
+- **ไฟล์:** `internal/modules/webhook/app/service.go`
+- **ปัญหา:** goroutine ที่ส่ง Discord notification ไม่มี panic recovery — ถ้า panic จะทำให้ process ตาย
+- **แก้ไข:** เพิ่ม `defer func() { if r := recover()... }()` ใน goroutine
+- **บัคเพิ่ม:** แก้ `ctx, span :=` เป็น `_, span :=` (แก้ ineffassign lint error)
+
+### BF2: ExternalDB Health Check HTTP Status ✅
+
+- **ไฟล์:** `internal/modules/externaldb/adapters/http/handler.go`
+- **ปัญหา:** เมื่อ DB unhealthy (connect ได้แต่ query ช้า) คืน 404 แทนที่ควรเป็น 503
+- **แก้ไข:** เพิ่ม `if result.Status == enum.DBUnhealthy` → return 503 Service Unavailable
+
+### BF3: Pagination Division-by-Zero Guard ✅
+
+- **ไฟล์:** `internal/shared/pagination/pagination.go`
+- **ปัญหา:** ถ้า `req.Limit = 0` → `math.Ceil(total / 0)` = panic
+- **แก้ไข:** เพิ่ม guard `if req.Limit < 1 { req.Limit = 1 }`
+
+### BF4: Quotation OTel Error Recording ✅
+
+- **ไฟล์:** `internal/modules/quotation/adapters/http/handler.go`
+- **ปัญหา:** `GetByID` และ `ListByCustomer` ไม่ record error ใน tracing span เมื่อเกิด error
+- **แก้ไข:** เพิ่ม `span.RecordError(err)` ก่อน return 500
+
+---
+
 > **หมายเหตุ:** เอกสารนี้เป็น living document — อัพเดตเมื่อทำ item เสร็จ  
-> เมื่อทั้งหมดเสร็จ คาดว่า score จะเพิ่มจาก **8.7/10 → 9.5/10**  
-> **Progress:** 4/26 items done (C4, H1, H3, H4) — Score 8.5 → 8.7
+> เมื่อทั้งหมดเสร็จ คาดว่า score จะเพิ่มจาก **9.0/10 → 9.5/10**  
+> **Progress:** 9/26 items done (C4, H1, H3, H4, H5, BF1-BF4) + Discord notification + Swagger TraceId — Score 8.5 → 9.0

@@ -58,6 +58,23 @@ type ResultData struct {
 	Meta any `json:"meta,omitempty"` // metadata เพิ่มเติม (optional)
 }
 
+// ErrorResult คือ result object เมื่อเกิด error พร้อม trace_id
+//
+//	{"trace_id": "qt-not-found"}
+type ErrorResult struct {
+	TraceID string `json:"trace_id" example:"qt-not-found"` // Error trace identifier
+}
+
+// ErrorResponse คือ response เมื่อเกิด error (สำหรับ Swagger)
+//
+//	{"status":"ERROR","status_code":404,"message":"quotation not found","result":{"trace_id":"qt-not-found"}}
+type ErrorResponse struct {
+	Status     string       `json:"status" example:"ERROR"`                // "ERROR"
+	StatusCode int          `json:"status_code" example:"400"`             // HTTP status code
+	Message    string       `json:"message" example:"quotation not found"` // Error description
+	Result     *ErrorResult `json:"result"`                                // Contains trace_id
+}
+
 // ===================================================================
 // Helper functions — ลดโค้ดซ้ำในทุก handler
 // ===================================================================
@@ -120,6 +137,24 @@ func ErrorWithCode(c *fiber.Ctx, status int, message string, code string) error 
 		Message:    message,
 		Result: map[string]string{
 			"code": code,
+		},
+	})
+}
+
+// ErrorWithTrace ส่ง response error พร้อม trace_id สำหรับ debug
+//
+//	return dto.ErrorWithTrace(c, fiber.StatusNotFound, "quotation not found", dto.TraceQTNotFound)
+//
+// Response JSON:
+//
+//	{"status":"ERROR","status_code":404,"message":"quotation not found","result":{"trace_id":"qt-not-found"}}
+func ErrorWithTrace(c *fiber.Ctx, status int, message string, traceID string) error {
+	return c.Status(status).JSON(ApiResponse{
+		Status:     enum.ResponseError,
+		StatusCode: status,
+		Message:    message,
+		Result: map[string]string{
+			"trace_id": traceID,
 		},
 	})
 }

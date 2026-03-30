@@ -111,6 +111,9 @@ func NewResponse[T any](items []T, total int, req Request) Response[T] {
 	if items == nil {
 		items = []T{}
 	}
+	if req.Limit < 1 {
+		req.Limit = 1
+	}
 	totalPages := int(math.Ceil(float64(total) / float64(req.Limit)))
 	return Response[T]{
 		Items:      items,
