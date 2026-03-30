@@ -37,9 +37,9 @@ func NewAuthController(service *app.Service) AuthController {
 // @Produce json
 // @Param request body loginRequest true "Login payload"
 // @Success 200 {object} dto.ApiResponse "Login success"
-// @Failure 400 {object} dto.ErrorResponse "trace_id: auth-bind-failed — request body ไม่ถูกต้อง"
-// @Failure 401 {object} dto.ErrorResponse "trace_id: auth-invalid-creds — username/password ไม่ถูกต้อง"
-// @Failure 500 {object} dto.ErrorResponse "trace_id: auth-internal-error — เกิดข้อผิดพลาดภายใน auth service"
+// @Failure 400 {object} dto.ErrorResponse "[10001] auth-bind-failed — request body ไม่ถูกต้อง"
+// @Failure 401 {object} dto.ErrorResponse "[10002] auth-invalid-creds — username/password ไม่ถูกต้อง"
+// @Failure 500 {object} dto.ErrorResponse "[10003] auth-internal-error — เกิดข้อผิดพลาดภายใน auth service"
 // @Router /auth/login [post]
 func (h *Handler) Login(c *fiber.Ctx) error {
 	ctx, span := appOtel.Tracer(appOtel.TracerAuthHandler).Start(c.UserContext(), "Login")

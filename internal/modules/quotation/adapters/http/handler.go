@@ -32,9 +32,9 @@ func NewQuotationController(service *app.Service) QuotationController {
 // @Produce json
 // @Param id path string true "Quotation ID"
 // @Success 200 {object} dto.ApiResponse "Quotation data"
-// @Failure 400 {object} dto.ErrorResponse "trace_id: qt-id-required — ไม่ได้ส่ง quotation id"
-// @Failure 404 {object} dto.ErrorResponse "trace_id: qt-not-found — ไม่พบ quotation"
-// @Failure 500 {object} dto.ErrorResponse "trace_id: qt-internal-error — เกิดข้อผิดพลาดภายใน quotation service"
+// @Failure 400 {object} dto.ErrorResponse "[11001] qt-id-required — ไม่ได้ส่ง quotation id"
+// @Failure 404 {object} dto.ErrorResponse "[11002] qt-not-found — ไม่พบ quotation"
+// @Failure 500 {object} dto.ErrorResponse "[11003] qt-internal-error — เกิดข้อผิดพลาดภายใน quotation service"
 // @Security BearerAuth
 // @Router /quotations/{id} [get]
 func (h *Handler) GetByID(c *fiber.Ctx) error {
@@ -70,8 +70,8 @@ func (h *Handler) GetByID(c *fiber.Ctx) error {
 // @Param sort query string false "Sort column" Enums(created_at, doc_no, total_amount, status)
 // @Param order query string false "Sort order" Enums(asc, desc) default(desc)
 // @Success 200 {object} dto.ApiResponse "Paginated quotations"
-// @Failure 400 {object} dto.ErrorResponse "trace_id: qt-customer-id-required — ไม่ได้ส่ง customerId"
-// @Failure 500 {object} dto.ErrorResponse "trace_id: qt-list-internal-error — เกิดข้อผิดพลาดขณะดึงรายการ quotation"
+// @Failure 400 {object} dto.ErrorResponse "[11004] qt-customer-id-required — ไม่ได้ส่ง customerId"
+// @Failure 500 {object} dto.ErrorResponse "[11005] qt-list-internal-error — เกิดข้อผิดพลาดขณะดึงรายการ quotation"
 // @Security BearerAuth
 // @Router /quotations [get]
 func (h *Handler) ListByCustomer(c *fiber.Ctx) error {

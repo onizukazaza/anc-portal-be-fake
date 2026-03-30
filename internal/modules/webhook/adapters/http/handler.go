@@ -36,8 +36,8 @@ func NewWebhookController(service *app.Service) WebhookController {
 // @Param X-GitHub-Event header string true "GitHub event type"
 // @Success 200 {object} dto.ApiResponse "Event processed"
 // @Failure 400 {object} dto.ApiResponse "Unsupported event"
-// @Failure 401 {object} dto.ErrorResponse "trace_id: wh-invalid-signature — GitHub signature ไม่ถูกต้อง"
-// @Failure 500 {object} dto.ErrorResponse "trace_id: wh-process-failed — ประมวลผล webhook ล้มเหลว"
+// @Failure 401 {object} dto.ErrorResponse "[14001] wh-invalid-signature — GitHub signature ไม่ถูกต้อง"
+// @Failure 500 {object} dto.ErrorResponse "[14002] wh-process-failed — ประมวลผล webhook ล้มเหลว"
 // @Router /webhooks/github [post]
 func (h *Handler) HandleGitHubPush(c *fiber.Ctx) error {
 	ctx, span := appOtel.Tracer(appOtel.TracerWebhookHandler).Start(c.UserContext(), "HandleGitHubPush")

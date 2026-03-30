@@ -47,9 +47,9 @@ func (h *Handler) CheckAll(c *fiber.Ctx) error {
 // @Produce json
 // @Param name path string true "Database name"
 // @Success 200 {object} dto.ApiResponse "Database status"
-// @Failure 400 {object} dto.ErrorResponse "trace_id: extdb-name-required — ไม่ได้ส่ง database name"
-// @Failure 404 {object} dto.ErrorResponse "trace_id: extdb-not-found — ไม่พบ database ที่ระบุ"
-// @Failure 503 {object} dto.ErrorResponse "trace_id: extdb-unhealthy — database ไม่สามารถเชื่อมต่อได้"
+// @Failure 400 {object} dto.ErrorResponse "[13001] extdb-name-required — ไม่ได้ส่ง database name"
+// @Failure 404 {object} dto.ErrorResponse "[13002] extdb-not-found — ไม่พบ database ที่ระบุ"
+// @Failure 503 {object} dto.ErrorResponse "[13003] extdb-unhealthy — database ไม่สามารถเชื่อมต่อได้"
 // @Security BearerAuth
 // @Router /external-db/health/{name} [get]
 func (h *Handler) CheckByName(c *fiber.Ctx) error {

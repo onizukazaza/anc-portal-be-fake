@@ -34,9 +34,9 @@ func NewCMIController(service *app.Service) CMIController {
 // @Produce      json
 // @Param        job_id path string true "Job ID"
 // @Success      200 {object} dto.ApiResponse "CMI policy data"
-// @Failure      400 {object} dto.ErrorResponse "trace_id: cmi-job-id-required — ไม่ได้ส่ง job_id"
-// @Failure      404 {object} dto.ErrorResponse "trace_id: cmi-job-not-found — ไม่พบ job"
-// @Failure      500 {object} dto.ErrorResponse "trace_id: cmi-internal-error — เกิดข้อผิดพลาดภายใน CMI service"
+// @Failure      400 {object} dto.ErrorResponse "[12001] cmi-job-id-required — ไม่ได้ส่ง job_id"
+// @Failure      404 {object} dto.ErrorResponse "[12002] cmi-job-not-found — ไม่พบ job"
+// @Failure      500 {object} dto.ErrorResponse "[12003] cmi-internal-error — เกิดข้อผิดพลาดภายใน CMI service"
 // @Security     BearerAuth
 // @Router       /cmi/{job_id}/request-policy-single-cmi [get]
 func (h *Handler) GetPolicyByJobID(c *fiber.Ctx) error {

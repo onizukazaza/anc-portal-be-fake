@@ -4,12 +4,12 @@
     ],
     "swagger": "2.0",
     "info": {
-        "description": "Backend API for ANC Insurance Portal\n\n## Error Response Format\nทุก error response จะมี `trace_id` ใน `result` เพื่อระบุจุดที่เกิด error\n```json\n{\"status\":\"ERROR\",\"status_code\":404,\"message\":\"quotation not found\",\"result\":{\"trace_id\":\"qt-not-found\"}}\n```\n\n## Error Code Catalog\n| Module | Trace ID | Code | คำอธิบาย |\n|--------|----------|------|---------|\n| Auth | auth-bind-failed | 10001 | request body ไม่ถูกต้อง |\n| Auth | auth-invalid-creds | 10002 | username/password ไม่ถูกต้อง |\n| Auth | auth-internal-error | 10003 | เกิดข้อผิดพลาดภายใน auth service |\n| Quotation | qt-id-required | 11001 | ไม่ได้ส่ง quotation id |\n| Quotation | qt-not-found | 11002 | ไม่พบ quotation |\n| Quotation | qt-internal-error | 11003 | เกิดข้อผิดพลาดภายใน quotation service |\n| Quotation | qt-customer-id-required | 11004 | ไม่ได้ส่ง customerId |\n| Quotation | qt-list-internal-error | 11005 | เกิดข้อผิดพลาดขณะดึงรายการ quotation |\n| CMI | cmi-job-id-required | 12001 | ไม่ได้ส่ง job_id |\n| CMI | cmi-job-not-found | 12002 | ไม่พบ job |\n| CMI | cmi-internal-error | 12003 | เกิดข้อผิดพลาดภายใน CMI service |\n| ExternalDB | extdb-name-required | 13001 | ไม่ได้ส่ง database name |\n| ExternalDB | extdb-not-found | 13002 | ไม่พบ database ที่ระบุ |\n| ExternalDB | extdb-unhealthy | 13003 | database ไม่สามารถเชื่อมต่อได้ |\n| Webhook | wh-invalid-signature | 14001 | GitHub signature ไม่ถูกต้อง |\n| Webhook | wh-process-failed | 14002 | ประมวลผล webhook ล้มเหลว |",
+        "description": "Backend API for ANC Insurance Portal\n\n## Error Response Format\nทุก error response จะมี `trace_id` ใน `result` เพื่อระบุจุดที่เกิด error\n```json\n{\"status\":\"ERROR\",\"status_code\":404,\"message\":\"quotation not found\",\"result\":{\"trace_id\":\"qt-not-found\"}}\n```\n\n## Error Code Catalog\n\u003e Source of truth: `internal/shared/dto/error_codes.go`\n\n| Module | Trace ID | Code | HTTP | คำอธิบาย |\n|--------|----------|------|------|---------|\n| Auth | auth-bind-failed | 10001 | 400 | request body ไม่ถูกต้อง |\n| Auth | auth-invalid-creds | 10002 | 401 | username/password ไม่ถูกต้อง |\n| Auth | auth-internal-error | 10003 | 500 | เกิดข้อผิดพลาดภายใน auth service |\n| Quotation | qt-id-required | 11001 | 400 | ไม่ได้ส่ง quotation id |\n| Quotation | qt-not-found | 11002 | 404 | ไม่พบ quotation |\n| Quotation | qt-internal-error | 11003 | 500 | เกิดข้อผิดพลาดภายใน quotation service |\n| Quotation | qt-customer-id-required | 11004 | 400 | ไม่ได้ส่ง customerId |\n| Quotation | qt-list-internal-error | 11005 | 500 | เกิดข้อผิดพลาดขณะดึงรายการ quotation |\n| CMI | cmi-job-id-required | 12001 | 400 | ไม่ได้ส่ง job_id |\n| CMI | cmi-job-not-found | 12002 | 404 | ไม่พบ job |\n| CMI | cmi-internal-error | 12003 | 500 | เกิดข้อผิดพลาดภายใน CMI service |\n| ExternalDB | extdb-name-required | 13001 | 400 | ไม่ได้ส่ง database name |\n| ExternalDB | extdb-not-found | 13002 | 404 | ไม่พบ database ที่ระบุ |\n| ExternalDB | extdb-unhealthy | 13003 | 503 | database ไม่สามารถเชื่อมต่อได้ |\n| Webhook | wh-invalid-signature | 14001 | 401 | GitHub signature ไม่ถูกต้อง |\n| Webhook | wh-process-failed | 14002 | 500 | ประมวลผล webhook ล้มเหลว |",
         "title": "ANC Portal API",
         "contact": {},
         "version": "1.1.0"
     },
-    "host": "localhost:20000",
+    "host": "localhost:3000",
     "basePath": "/v1",
     "paths": {
         "/auth/login": {
@@ -44,19 +44,19 @@
                         }
                     },
                     "400": {
-                        "description": "trace_id: auth-bind-failed — request body ไม่ถูกต้อง",
+                        "description": "[10001] auth-bind-failed — request body ไม่ถูกต้อง",
                         "schema": {
                             "$ref": "#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ErrorResponse"
                         }
                     },
                     "401": {
-                        "description": "trace_id: auth-invalid-creds — username/password ไม่ถูกต้อง",
+                        "description": "[10002] auth-invalid-creds — username/password ไม่ถูกต้อง",
                         "schema": {
                             "$ref": "#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "trace_id: auth-internal-error — เกิดข้อผิดพลาดภายใน auth service",
+                        "description": "[10003] auth-internal-error — เกิดข้อผิดพลาดภายใน auth service",
                         "schema": {
                             "$ref": "#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ErrorResponse"
                         }
@@ -99,19 +99,19 @@
                         }
                     },
                     "400": {
-                        "description": "trace_id: cmi-job-id-required — ไม่ได้ส่ง job_id",
+                        "description": "[12001] cmi-job-id-required — ไม่ได้ส่ง job_id",
                         "schema": {
                             "$ref": "#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ErrorResponse"
                         }
                     },
                     "404": {
-                        "description": "trace_id: cmi-job-not-found — ไม่พบ job",
+                        "description": "[12002] cmi-job-not-found — ไม่พบ job",
                         "schema": {
                             "$ref": "#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "trace_id: cmi-internal-error — เกิดข้อผิดพลาดภายใน CMI service",
+                        "description": "[12003] cmi-internal-error — เกิดข้อผิดพลาดภายใน CMI service",
                         "schema": {
                             "$ref": "#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ErrorResponse"
                         }
@@ -182,19 +182,19 @@
                         }
                     },
                     "400": {
-                        "description": "trace_id: extdb-name-required — ไม่ได้ส่ง database name",
+                        "description": "[13001] extdb-name-required — ไม่ได้ส่ง database name",
                         "schema": {
                             "$ref": "#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ErrorResponse"
                         }
                     },
                     "404": {
-                        "description": "trace_id: extdb-not-found — ไม่พบ database ที่ระบุ",
+                        "description": "[13002] extdb-not-found — ไม่พบ database ที่ระบุ",
                         "schema": {
                             "$ref": "#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ErrorResponse"
                         }
                     },
                     "503": {
-                        "description": "trace_id: extdb-unhealthy — database ไม่สามารถเชื่อมต่อได้",
+                        "description": "[13003] extdb-unhealthy — database ไม่สามารถเชื่อมต่อได้",
                         "schema": {
                             "$ref": "#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ErrorResponse"
                         }
@@ -274,13 +274,13 @@
                         }
                     },
                     "400": {
-                        "description": "trace_id: qt-customer-id-required — ไม่ได้ส่ง customerId",
+                        "description": "[11004] qt-customer-id-required — ไม่ได้ส่ง customerId",
                         "schema": {
                             "$ref": "#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "trace_id: qt-list-internal-error — เกิดข้อผิดพลาดขณะดึงรายการ quotation",
+                        "description": "[11005] qt-list-internal-error — เกิดข้อผิดพลาดขณะดึงรายการ quotation",
                         "schema": {
                             "$ref": "#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ErrorResponse"
                         }
@@ -323,19 +323,19 @@
                         }
                     },
                     "400": {
-                        "description": "trace_id: qt-id-required — ไม่ได้ส่ง quotation id",
+                        "description": "[11001] qt-id-required — ไม่ได้ส่ง quotation id",
                         "schema": {
                             "$ref": "#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ErrorResponse"
                         }
                     },
                     "404": {
-                        "description": "trace_id: qt-not-found — ไม่พบ quotation",
+                        "description": "[11002] qt-not-found — ไม่พบ quotation",
                         "schema": {
                             "$ref": "#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "trace_id: qt-internal-error — เกิดข้อผิดพลาดภายใน quotation service",
+                        "description": "[11003] qt-internal-error — เกิดข้อผิดพลาดภายใน quotation service",
                         "schema": {
                             "$ref": "#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ErrorResponse"
                         }
@@ -385,13 +385,13 @@
                         }
                     },
                     "401": {
-                        "description": "trace_id: wh-invalid-signature — GitHub signature ไม่ถูกต้อง",
+                        "description": "[14001] wh-invalid-signature — GitHub signature ไม่ถูกต้อง",
                         "schema": {
                             "$ref": "#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "trace_id: wh-process-failed — ประมวลผล webhook ล้มเหลว",
+                        "description": "[14002] wh-process-failed — ประมวลผล webhook ล้มเหลว",
                         "schema": {
                             "$ref": "#/definitions/github_com_onizukazaza_anc-portal-be-fake_internal_shared_dto.ErrorResponse"
                         }

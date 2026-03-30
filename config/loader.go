@@ -144,7 +144,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("server.rateLimit.expiration", "1m")
 
 	v.SetDefault("swagger.enabled", true)
-	v.SetDefault("swagger.host", "localhost:20000")
+	v.SetDefault("swagger.host", "localhost:3000")
 	v.SetDefault("swagger.schemes", []string{"http"})
 	v.SetDefault("swagger.basePath", "/v1")
 
