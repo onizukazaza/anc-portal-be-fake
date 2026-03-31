@@ -28,8 +28,8 @@ listme.md
 # Deployment configs (ไม่ต้อง copy เข้า app image)
 deployments/
 
-# Generated docs (rebuild ได้)
-docs/
+# Generated docs — ต้อง copy เข้า Docker เพราะ cmd/api import docs package
+# docs/
 
 # Test data
 *_test.go
