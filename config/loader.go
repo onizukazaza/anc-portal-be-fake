@@ -13,6 +13,7 @@ import (
 func Load() (*Config, error) {
 	_ = godotenv.Load()
 
+	fmt.Println("🐍 viper: loading configuration...")
 	v := viper.New()
 
 	v.SetConfigName("config")
@@ -21,7 +22,7 @@ func Load() (*Config, error) {
 	v.AddConfigPath("./config")
 
 	if err := v.ReadInConfig(); err != nil {
-		fmt.Println("no config.yaml found, using env only")
+		fmt.Println("🐍 viper: no config.yaml found, using env only")
 	}
 
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
@@ -50,8 +51,10 @@ func Load() (*Config, error) {
 	cfg.ExternalDBs = externalDBs
 
 	if err := validator.Get().Struct(cfg); err != nil {
-		return nil, fmt.Errorf("config validation error: %w", err)
+		return nil, fmt.Errorf("🐍 config validation error: %w", err)
 	}
+
+	fmt.Println("🐍 viper: configuration loaded successfully ✓")
 
 	for name := range cfg.ExternalDBs {
 		db := cfg.ExternalDBs[name]
