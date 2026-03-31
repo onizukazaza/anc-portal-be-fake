@@ -142,16 +142,16 @@ jobs:
 
       # ─── Notify on success ───
       - name: Notify success (Discord)
-        if: success() && vars.DISCORD_WEBHOOK_URL != ''
+        if: success() && secrets.DISCORD_WEBHOOK_URL != ''
         run: |
           curl -sf -H "Content-Type: application/json" \
             -d "{\"embeds\":[{\"title\":\"✅ Staging Deployed\",\"color\":3066993,\"fields\":[{\"name\":\"Commit\",\"value\":\"\`${{ steps.tag.outputs.sha }}\`\",\"inline\":true},{\"name\":\"Author\",\"value\":\"${{ github.actor }}\",\"inline\":true}],\"url\":\"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\",\"footer\":{\"text\":\"ANC Portal CD\"}}]}" \
-            "${{ vars.DISCORD_WEBHOOK_URL }}" || true
+            "${{ secrets.DISCORD_WEBHOOK_URL }}" || true
 
       # ─── Notify on failure ───
       - name: Notify failure (Discord)
-        if: failure() && vars.DISCORD_WEBHOOK_URL != ''
+        if: failure() && secrets.DISCORD_WEBHOOK_URL != ''
         run: |
           curl -sf -H "Content-Type: application/json" \
             -d "{\"embeds\":[{\"title\":\"❌ Staging Deploy Failed\",\"color\":15158332,\"fields\":[{\"name\":\"Commit\",\"value\":\"\`${{ steps.tag.outputs.sha }}\`\",\"inline\":true},{\"name\":\"Author\",\"value\":\"${{ github.actor }}\",\"inline\":true}],\"url\":\"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\",\"footer\":{\"text\":\"ANC Portal CD\"}}]}" \
-            "${{ vars.DISCORD_WEBHOOK_URL }}" || true
+            "${{ secrets.DISCORD_WEBHOOK_URL }}" || true

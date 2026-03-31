@@ -155,15 +155,15 @@ jobs:
 
       # ─── Notifications ───
       - name: Notify success (Discord)
-        if: success() && vars.DISCORD_WEBHOOK_URL != ''
+        if: success() && secrets.DISCORD_WEBHOOK_URL != ''
         run: |
           curl -sf -H "Content-Type: application/json" \
             -d "{\"embeds\":[{\"title\":\"✅ Production Deployed\",\"color\":3066993,\"fields\":[{\"name\":\"Tag\",\"value\":\"\`${{ steps.tag.outputs.image_tag }}\`\",\"inline\":true},{\"name\":\"Author\",\"value\":\"${{ github.actor }}\",\"inline\":true}],\"url\":\"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\",\"footer\":{\"text\":\"ANC Portal CD\"}}]}" \
-            "${{ vars.DISCORD_WEBHOOK_URL }}" || true
+            "${{ secrets.DISCORD_WEBHOOK_URL }}" || true
 
       - name: Notify failure (Discord)
-        if: failure() && vars.DISCORD_WEBHOOK_URL != ''
+        if: failure() && secrets.DISCORD_WEBHOOK_URL != ''
         run: |
           curl -sf -H "Content-Type: application/json" \
             -d "{\"embeds\":[{\"title\":\"❌ Production Deploy Failed\",\"color\":15158332,\"fields\":[{\"name\":\"Tag\",\"value\":\"\`${{ steps.tag.outputs.image_tag }}\`\",\"inline\":true},{\"name\":\"Author\",\"value\":\"${{ github.actor }}\",\"inline\":true}],\"url\":\"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\",\"footer\":{\"text\":\"ANC Portal CD\"}}]}" \
-            "${{ vars.DISCORD_WEBHOOK_URL }}" || true
+            "${{ secrets.DISCORD_WEBHOOK_URL }}" || true

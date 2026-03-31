@@ -445,8 +445,8 @@ jobs:
           echo "Built payload for status: ${STATUS}"
 
       - name: Send Discord notification
-        if: vars.DISCORD_WEBHOOK_URL != ''
+        if: secrets.DISCORD_WEBHOOK_URL != ''
         run: |
           curl -sf -H "Content-Type: application/json" \
             -d @payload.json \
-            "${{ vars.DISCORD_WEBHOOK_URL }}" || echo "::warning::Discord notification failed"
+            "${{ secrets.DISCORD_WEBHOOK_URL }}" || echo "::warning::Discord notification failed"

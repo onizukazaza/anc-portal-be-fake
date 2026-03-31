@@ -137,8 +137,8 @@ jobs:
 
       # ─── Notify Discord ───
       - name: Notify Discord
-        if: success() && vars.DISCORD_WEBHOOK_URL != ''
+        if: success() && secrets.DISCORD_WEBHOOK_URL != ''
         run: |
           curl -sf -H "Content-Type: application/json" \
             -d "{\"content\":\"📋 **Release ${{ steps.version.outputs.tag }}** published\nCommits: ${{ steps.meta.outputs.commit_count }}\nhttps://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.tag }}\"}" \
-            "${{ vars.DISCORD_WEBHOOK_URL }}" || true
+            "${{ secrets.DISCORD_WEBHOOK_URL }}" || true
