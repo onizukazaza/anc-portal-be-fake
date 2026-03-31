@@ -3,31 +3,56 @@
 > **สำหรับแนวคิดและการศึกษา** 📚
 >
 > `Go 1.25` · `Fiber v2` · `PostgreSQL` · `Redis` · `Kafka` · `OpenTelemetry`
->
-> Backend API สำหรับระบบ ANC Insurance Portal
-> ออกแบบแบบ **Modular Monolith + Hexagonal Architecture**
 
-<br>
+---
+
+## 💡 Concept — แนวคิดของโปรเจกต์นี้
+
+โปรเจกต์นี้เป็น **Backend API สำหรับระบบประกันภัย** ที่ออกแบบเพื่อศึกษาและทดลองแนวคิดต่าง ๆ
+โดยใช้สถาปัตยกรรม **Modular Monolith + Hexagonal Architecture**
 
 ```
-    ╔══════════════════════════════════════════════════════════════╗
-    ║                                                              ║
-    ║     █████╗ ███╗   ██╗ ██████╗    ██████╗  ██████╗ ██████╗   ║
-    ║    ██╔══██╗████╗  ██║██╔════╝    ██╔══██╗██╔═══██╗██╔══██╗  ║
-    ║    ███████║██╔██╗ ██║██║         ██████╔╝██║   ██║██████╔╝  ║
-    ║    ██╔══██║██║╚██╗██║██║         ██╔═══╝ ██║   ██║██╔══██╗  ║
-    ║    ██║  ██║██║ ╚████║╚██████╗    ██║     ╚██████╔╝██║  ██║  ║
-    ║    ╚═╝  ╚═╝╚═╝  ╚═══╝ ╚═════╝    ╚═╝      ╚═════╝ ╚═╝  ╚═╝  ║
-    ║                                                              ║
-    ║          Insurance Portal Backend — Concept Edition          ║
-    ╚══════════════════════════════════════════════════════════════╝
+                        ┌─────────────────────────────────┐
+                        │         ANC Portal Backend       │
+                        │      (Modular Monolith + Hex)    │
+                        └──────────────┬──────────────────┘
+                                       │
+               ┌───────────────────────┼───────────────────────┐
+               │                       │                       │
+        ┌──────▼──────┐        ┌───────▼──────┐       ┌───────▼──────┐
+        │   Modules   │        │   Packages   │       │    Infra     │
+        │             │        │              │       │              │
+        │  auth       │        │  otel        │       │  Docker      │
+        │  cmi        │        │  kafka       │       │  Kubernetes  │
+        │  quotation  │        │  cache       │       │  GitHub CI   │
+        │  policy     │        │  httpclient  │       │  Grafana     │
+        │  payment    │        │  retry       │       │  Dependabot  │
+        └──────┬──────┘        └──────┬───────┘       └──────────────┘
+               │                      │
+               ▼                      ▼
+        ┌─────────────────────────────────────┐
+        │           Database Layer            │
+        │   PostgreSQL (main) + External DBs  │
+        │     Multi-Driver: postgres / mysql  │
+        └─────────────────────────────────────┘
 ```
+
+**แนวคิดหลัก:**
+
+- **Modular Monolith** — แยก module ชัดเจน (auth, cmi, quotation ฯลฯ) แต่ deploy เป็น binary เดียว ลดความซับซ้อนของ infra ในขณะที่ code พร้อมแตกเป็น microservice ได้เมื่อถึงเวลา
+- **Hexagonal (Ports & Adapters)** — business logic ไม่ผูกกับ framework ใด ๆ เปลี่ยน DB, HTTP framework, หรือ message broker ได้โดยไม่แก้ logic
+- **Multi-Driver Database** — Main DB เป็น PostgreSQL แต่รองรับ External DB หลายตัว (Postgres/MySQL) ผ่าน interface เดียวกัน
+- **Hybrid Cache (L1 → L2)** — In-memory cache (Otter) เป็น L1 ให้เร็ว, Redis เป็น L2 ให้แชร์ข้ามทุก instance
+- **Event-Driven** — API ตอบ client ทันที งานหนักส่งผ่าน Kafka ไปทำใน Worker
+- **Observability-First** — ทุก layer มี tracing (OTel) → ดูผ่าน Grafana ได้ตั้งแต่ HTTP ถึง DB query
+- **Automated Quality** — CI 7 stages (Lint → Test → Vuln → Build → Docker → Scan → Notify) + Dependabot ดูแล dependency อัตโนมัติ
 
 ---
 
 ## 📋 สารบัญ
 
-- [🚀 Quick Start](#-quick-start)
+- [� Concept — แนวคิดของโปรเจกต์นี้](#-concept--แนวคิดของโปรเจกต์นี้)
+- [�🚀 Quick Start](#-quick-start)
 - [⚡ คำสั่งที่ใช้บ่อย](#-คำสั่งที่ใช้บ่อย)
 - [🔄 CI/CD Pipeline](#-cicd-pipeline)
 - [🗄️ Database Architecture](#️-database-architecture)

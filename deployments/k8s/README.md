@@ -10,7 +10,7 @@
 
 ## สารบัญ
 
-- [Kubernetes Deployment Guide — ANC Portal Backend](#kubernetes-deployment-guide--anc-portal-backend)
+- [Kubernetes Deployment — ANC Portal Backend](#kubernetes-deployment--anc-portal-backend)
   - [สารบัญ](#สารบัญ)
   - [โครงสร้างไฟล์](#โครงสร้างไฟล์)
   - [Prerequisites](#prerequisites)
