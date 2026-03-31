@@ -161,19 +161,18 @@ anc-portal-be/
 |---|---|
 | [Architecture](documents/architecture/README.md) | Clean Architecture, module structure, design patterns |
 | [Swagger Guide](documents/architecture/swagger-concept.md) | Swagger/OpenAPI — annotation, วิธีใช้, เปรียบเทียบเครื่องมือ |
-| [Deployment Guide](documents/deployment-guide.md) | Local → Staging → Production deployment |
+| [Deployment Guide](documents/infrastructure/deployment-guide.md) | Local → Staging → Production deployment |
 | [K8s Manifests](deployments/k8s/README.md) | Kubernetes resources, overlays, troubleshooting |
-| [OTel Tracing](documents/integrations/otel-tracing-guide.md) | Distributed tracing, Kafka propagation, tracer registry |
-| [OTel Quick Start](documents/integrations/otel-grafana-observability.md) | Observability stack setup (5 นาที) |
-| [Redis Cache](documents/integrations/redis-cache-guide.md) | Cache patterns, interface design, TTL strategy |
-| [GitHub → Discord](documents/integrations/github-webhook-discord-notification.md) | Webhook notification design |
+| [OTel Tracing](documents/observability/otel-tracing-guide.md) | Distributed tracing, Kafka propagation, tracer registry |
+| [OTel Quick Start](documents/observability/otel-grafana-quickstart.md) | Observability stack setup (5 นาที) |
+| [Redis Cache](documents/infrastructure/redis-cache-guide.md) | Cache patterns, interface design, TTL strategy |
+| [GitHub → Discord](documents/infrastructure/discord-notification.md) | Webhook notification design |
 | [Unit Test Guide](documents/testing/unit-test-guide.md) | Test patterns, testkit, fakes, กฎการเขียน test |
 | [Microservice Readiness](documents/architecture/microservice-readiness.md) | Microservice คืออะไร, readiness score, แผน extract |
 | [CI/CD Guide](documents/cicd/ci-cd-guide.md) | CI/CD pipeline, GitHub Actions, Docker build, K8s deploy |
-| [CI/CD Pipeline Explained](documents/cicd/ci-cd-pipeline-explained.md) | อธิบายทุกขั้นตอน CI/CD — Lint, Test, Vuln, Build |
-| [Project Structure](documents/architecture/project-structure-concept.md) | Directory layout, module map, layer descriptions |
-| [Gaps & Todos](documents/architecture/gaps-and-todos.md) | Gap analysis, improvement tracking, quality score |
-| [Unit Test Summary](documents/testing/unit-test-summary.md) | Test architecture summary — patterns, counts, coverage |
+| [CI Pipeline Stages](documents/cicd/ci-pipeline-stages.md) | อธิบายทุกขั้นตอน CI/CD — Lint, Test, Vuln, Build |
+| [Project Structure](documents/architecture/project-structure.md) | Directory layout, module map, layer descriptions |
+| [Unit Test Cheatsheet](documents/testing/unit-test-cheatsheet.md) | Test architecture summary — patterns, counts, coverage |
 | [Import Data](cmd/import/import_data_guide.md) | CSV import — insurer, province, user |
 
 ---

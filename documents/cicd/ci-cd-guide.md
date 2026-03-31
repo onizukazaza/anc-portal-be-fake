@@ -13,16 +13,17 @@
 2. [สถานะปัจจุบัน — อะไรพร้อมแล้ว](#2-สถานะปัจจุบัน--อะไรพร้อมแล้ว)
 3. [อะไรที่ยังขาด](#3-อะไรที่ยังขาด)
 4. [Branch Strategy](#4-branch-strategy)
-5. [GitHub Actions — CI Pipeline](#5-github-actions--ci-pipeline)
-6. [GitHub Actions — CD Pipeline](#6-github-actions--cd-pipeline)
-7. [Docker Build Pipeline](#7-docker-build-pipeline)
-8. [Kubernetes Deployment Pipeline](#8-kubernetes-deployment-pipeline)
-9. [Database Migration Strategy](#9-database-migration-strategy)
-10. [Secret Management](#10-secret-management)
-11. [Testing Pipeline](#11-testing-pipeline)
-12. [Monitoring & Alerting](#12-monitoring--alerting)
-13. [Checklist & Runbook](#13-checklist--runbook)
-14. [สรุป](#14-สรุป)
+5. [Local CI Pipeline](#5-local-ci-pipeline-runps1-ci)
+6. [GitHub Actions — CI Pipeline](#6-github-actions--ci-pipeline)
+7. [GitHub Actions — CD Pipeline](#7-github-actions--cd-pipeline)
+8. [Docker Build Pipeline](#8-docker-build-pipeline)
+9. [Kubernetes Deployment Pipeline](#9-kubernetes-deployment-pipeline)
+10. [Database Migration Strategy](#10-database-migration-strategy)
+11. [Secret Management](#11-secret-management)
+12. [Testing Pipeline](#12-testing-pipeline)
+13. [Monitoring & Alerting](#13-monitoring--alerting)
+14. [Checklist & Runbook](#14-checklist--runbook)
+15. [สรุป](#15-สรุป)
 
 ---
 
@@ -185,7 +186,62 @@ chore: อื่นๆ (deps, config)
 
 ---
 
-## 5. GitHub Actions — CI Pipeline
+## 5. Local CI Pipeline (`run.ps1 ci`)
+
+ก่อน push code ขึ้น GitHub สามารถรัน CI ตรวจสอบในเครื่องก่อนได้:
+
+```powershell
+.\run.ps1 ci
+```
+
+**ผลลัพธ์ที่เห็น:**
+
+```
+  CI Pipeline - ANC Portal Backend
+  =================================
+
+  [1/4] Lint  PASS (7s)
+  [2/4] Test  PASS (9.6s)
+  [3/4] Vuln  PASS (9.9s)
+  [4/4] Build PASS (7.7s)
+
+  PIPELINE PASSED (total: 34.3s)
+```
+
+### 4 Steps อธิบาย
+
+| Step | คำสั่งจริง | ตรวจอะไร | ถ้า FAIL |
+|------|-----------|----------|----------|
+| **Lint** | `golangci-lint run ./...` | คุณภาพโค้ด, security patterns, coding style | Pipeline หยุดทันที |
+| **Test** | `go test -count 1 ./...` | Unit tests ทุก package | Pipeline หยุดทันที |
+| **Vuln** | `govulncheck ./...` | Dependency มี CVE ไหม | แจ้งเตือน |
+| **Build** | `go build -o ./tmp/<name>.exe ./cmd/<name>` | Compile 5 binaries ผ่านไหม | Pipeline หยุดทันที |
+
+### Linter ที่ใช้ (แบ่งตามประเภท)
+
+| ประเภท | Linter | ตรวจอะไร |
+|--------|--------|----------|
+| **Bugs** | `errcheck`, `govet`, `staticcheck`, `bodyclose`, `noctx`, `rowserrcheck`, `sqlclosecheck` | ลืม handle error, HTTP body ไม่ปิด, SQL ไม่ปิด |
+| **Performance** | `prealloc`, `ineffassign` | Slice ไม่ pre-allocate, assign แล้วไม่ใช้ |
+| **Style** | `unused`, `gocritic` | โค้ดที่ไม่ได้ใช้, คำแนะนำเพิ่มเติม |
+| **Security** | `gosec` | SQL injection, hardcoded secrets, weak crypto |
+
+### เปรียบเทียบ Local vs GitHub Actions
+
+| รายการ | Local (`run.ps1 ci`) | GitHub Actions (`ci.yml`) |
+|--------|---------------------|---------------------------|
+| Lint | เหมือนกัน | เหมือนกัน |
+| Test | `go test -count 1` | `go test -race -coverprofile` (มี race detection + coverage) |
+| Vuln | เหมือนกัน | เหมือนกัน |
+| Build | 5 binaries (ไม่มี ldflags) | 5 binaries + ldflags (Git SHA, Build Time) |
+| Docker | ไม่มี | Build + Push 2 images |
+| Scan | ไม่มี | Trivy security scan |
+| Notify | Discord (ถ้ามี webhook) | Discord (always) |
+| Parallel | Sequential (ทีละ step) | Parallel (lint/test/vuln พร้อมกัน) |
+
+---
+
+## 6. GitHub Actions — CI Pipeline
 
 ### Workflow: `.github/workflows/ci.yml`
 
@@ -384,7 +440,7 @@ Push / PR
 
 ---
 
-## 6. GitHub Actions — CD Pipeline
+## 7. GitHub Actions — CD Pipeline
 
 ### Workflow: `.github/workflows/deploy-staging.yml`
 
@@ -552,7 +608,7 @@ main tag (v*) ──→ CI ผ่าน ──→ Deploy Production (manual appr
 
 ---
 
-## 7. Docker Build Pipeline
+## 8. Docker Build Pipeline
 
 ### Image Naming Convention
 
@@ -607,7 +663,7 @@ Push tag v1.0.0  → ghcr.io/onizukazaza/anc-portal-be-fake:v1.0.0
 
 ---
 
-## 8. Kubernetes Deployment Pipeline
+## 9. Kubernetes Deployment Pipeline
 
 ### Resource Overview
 
@@ -688,7 +744,7 @@ kubectl rollout undo deployment/stg-anc-portal-api -n anc-portal --to-revision=3
 
 ---
 
-## 9. Database Migration Strategy
+## 10. Database Migration Strategy
 
 ### ระบบ Migration ปัจจุบัน
 
@@ -735,7 +791,7 @@ migrations/
 
 ---
 
-## 10. Secret Management
+## 11. Secret Management
 
 ### สถานะปัจจุบัน
 
@@ -818,7 +874,7 @@ kubeseal --format yaml < secret.yaml > sealed-secret.yaml
 
 ---
 
-## 11. Testing Pipeline
+## 12. Testing Pipeline
 
 ### Test Pyramid
 
@@ -896,7 +952,7 @@ issues:
 
 ---
 
-## 12. Monitoring & Alerting
+## 13. Monitoring & Alerting
 
 ### Observability Stack ปัจจุบัน
 
@@ -910,7 +966,7 @@ OTel Collector
     └──→ Grafana (dashboards)
 ```
 
-ดูรายละเอียด: [OTel Tracing Guide](../integrations/otel-tracing-guide.md)
+ดูรายละเอียด: [OTel Tracing Guide](../observability/otel-tracing-guide.md)
 
 ### แนะนำ: Alerting Rules
 
@@ -996,7 +1052,7 @@ Jobs:  ❌ Lint  ✅ Test  ✅ Vuln
 
 ---
 
-## 13. Checklist & Runbook
+## 14. Checklist & Runbook
 
 ### Pre-Implementation Checklist
 
@@ -1055,7 +1111,7 @@ Jobs:  ❌ Lint  ✅ Test  ✅ Vuln
 
 ---
 
-## 14. สรุป
+## 15. สรุป
 
 ### What We Have (พร้อมแล้ว)
 

@@ -248,7 +248,7 @@ Request → L1 Otter (~1μs) → L2 Redis (~1ms) → Database (~5ms)
 | **Write-through** | เขียนทั้ง L1 + L2 พร้อมกัน |
 | **Feature toggles** | `REDIS_ENABLED`, `LOCAL_CACHE_ENABLED` — ปิดได้อิสระ |
 
-ดูรายละเอียดเพิ่มเติม: [Redis Cache Guide](../integrations/redis-cache-guide.md)
+ดูรายละเอียดเพิ่มเติม: [Redis Cache Guide](../infrastructure/redis-cache-guide.md)
 
 ---
 
@@ -307,7 +307,7 @@ Cached ใน `sync.Map` — lock-free read, zero allocation หลัง warm-u
 | **Span name** | `{Operation}` เท่านั้น | `Login`, `GetPolicyByJobID` |
 | **Infrastructure** | `anc/{component}` | `anc/fiber`, `anc/kafka` |
 
-ดูรายละเอียดเพิ่มเติม: [OTel Tracing Guide](../integrations/otel-tracing-guide.md)
+ดูรายละเอียดเพิ่มเติม: [OTel Tracing Guide](../observability/otel-tracing-guide.md)
 
 ---
 

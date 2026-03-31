@@ -381,27 +381,36 @@ anc-portal-be/
 │   └── swagger.yaml
 │
 ├── documents/                         # ─── Technical Documentation ───
-│   ├── deployment-guide.md
+│   ├── README.md                      #   สารบัญรวมทุกเอกสาร
 │   ├── architecture/
 │   │   ├── README.md                  #   architecture overview
-│   │   ├── project-structure-concept.md  #   ← this file
+│   │   ├── project-structure.md       #   ← this file
 │   │   ├── database-concept.md        #   Internal & External DB concept
 │   │   ├── kafka-concept.md           #   Kafka event-driven architecture concept
-│   │   ├── gaps-and-todos.md          #   gap analysis + todo tracking
 │   │   ├── microservice-readiness.md  #   microservice extraction guide
 │   │   └── swagger-concept.md         #   Swagger/OpenAPI guide + Error Code Catalog
 │   ├── cicd/
-│   │   ├── ci-cd-guide.md             #   CI/CD pipeline guide
-│   │   └── ci-cd-pipeline-explained.md #   CI/CD อธิบายทุกส่วน (Lint/Test/Vuln/Build)
-│   ├── integrations/
-│   │   ├── github-webhook-discord-notification.md
-│   │   ├── otel-grafana-observability.md
-│   │   ├── otel-tracing-guide.md
-│   │   └── redis-cache-guide.md
-│   └── testing/
-│       ├── unit-test-guide.md
-│       ├── unit-test-summary.md       #   test architecture summary for ClickUp
-│       └── unit-test-brief.md         #   brief test overview
+│   │   ├── ci-cd-guide.md             #   CI/CD pipeline guide (+ Local CI)
+│   │   ├── ci-pipeline-stages.md      #   7 stages breakdown
+│   │   ├── workflow-concept.md        #   push → CI → staging → tag → production
+│   │   ├── dependabot-concept.md      #   Dependabot config & concept
+│   │   └── github-actions-setup.md    #   GitHub Actions + Secrets setup
+│   ├── observability/
+│   │   ├── otel-tracing-guide.md      #   OpenTelemetry tracing ฉบับเต็ม
+│   │   └── otel-grafana-quickstart.md #   Grafana + Tempo + Prometheus quick start
+│   ├── infrastructure/
+│   │   ├── deployment-guide.md        #   Docker + Kubernetes deployment
+│   │   ├── kubernetes-guide.md        #   Kubernetes concepts + manifests
+│   │   ├── resource-spec-guide.md     #   CPU/Memory requests & limits
+│   │   ├── redis-cache-guide.md       #   Redis + Hybrid L1→L2 cache
+│   │   └── discord-notification.md    #   Discord Webhook notification
+│   ├── testing/
+│   │   ├── unit-test-guide.md         #   unit test ฉบับเต็ม
+│   │   ├── unit-test-cheatsheet.md    #   cheatsheet — patterns, examples, commands
+│   │   └── code-coverage-concept.md   #   coverage คืออะไร + วิธีวัด
+│   └── operations/
+│       ├── incident-response-runbook.md #  incident response (SEV1-4)
+│       └── iso-standards-checklist.md #   ISO 27001/9001 checklist
 │
 ├── deployments/                       # ─── Infrastructure ───
 │   ├── docker/

@@ -147,7 +147,7 @@
 | 14 | Graceful Shutdown | 25010 | Server graceful shutdown |
 | 15 | Database Migration | 12207 | `cmd/migrate/`, versioned SQL files |
 | 16 | API Documentation | 25010, 12207 | Swagger/OpenAPI |
-| 17 | Deployment Guide | 9001, 12207 | `documents/deployment-guide.md` |
+| 17 | Deployment Guide | 9001, 12207 | `documents/infrastructure/deployment-guide.md` |
 | 18 | Branch Strategy | 9001, 12207 | `develop` → `main` workflow |
 | 19 | TLS/SSL Support | 27001 | Database TLS config |
 | 20 | Password Hashing | 27001 | bcrypt |

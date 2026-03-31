@@ -4,7 +4,7 @@
 >
 > Kubernetes manifests สำหรับ deploy ด้วย Kustomize (base + overlays)
 >
-> ดู Deployment Guide ฉบับเต็ม: [documents/deployment-guide.md](../../documents/deployment-guide.md)
+> ดู Deployment Guide ฉบับเต็ม: [documents/infrastructure/deployment-guide.md](../../documents/infrastructure/deployment-guide.md)
 
 ---
 

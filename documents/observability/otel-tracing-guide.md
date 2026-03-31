@@ -5,7 +5,7 @@
 > โครงสร้าง OTel ของโปรเจกต์ `anc-portal-be`
 > สำหรับนักพัฒนาที่ต้องเพิ่ม span, ดู trace, หรือแก้ไข observability config
 >
-> Quick Start: [OTel + Grafana Quick Start](otel-grafana-observability.md)
+> Quick Start: [OTel + Grafana Quick Start](otel-grafana-quickstart.md)
 
 ---
 
