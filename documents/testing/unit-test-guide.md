@@ -1,6 +1,6 @@
 # Unit Test Patterns — ANC Portal Backend
 
-> **v2.0** — Last updated: March 2026
+> **v3.0** — Last updated: March 2026
 >
 > คู่มือ Unit Test Patterns สำหรับทีม ครอบคลุม แนวคิด, กฎ, ตัวอย่างจริง, ข้อดี/ข้อเสีย
 > และสิ่งที่ต้องระวัง เพื่อให้ทุกคนเขียนเทสในทิศทางเดียวกัน
@@ -16,6 +16,8 @@
    - 3.2 [Hand-Written Fakes](#32-hand-written-fakes)
    - 3.3 [Closure-Based Mocks](#33-closure-based-mocks)
    - 3.4 [Test Helpers (doRequest, testConfig)](#34-test-helpers)
+   - 3.5 [Handler Testing Pattern (HTTP Layer)](#35-handler-testing-pattern-http-layer)
+   - 3.6 [Repository Testing Pattern (Database Layer)](#36-repository-testing-pattern-database-layer)
 4. [testkit Package — Assertion Helpers](#4-testkit-package--assertion-helpers)
    - 4.1 [Assert Functions (Non-Fatal)](#41-assert-functions-non-fatal)
    - 4.2 [Must Functions (Fatal)](#42-must-functions-fatal)
@@ -44,11 +46,12 @@ go.mod dependencies สำหรับ test = 0
 
 | Metric | Value |
 |--------|-------|
-| Test packages | 16 |
-| Test files | 22+ |
-| Fakes files | 4 (`*_fakes_test.go`) |
+| Test packages | 18 |
+| Test files | 25+ |
+| Fakes files | 6 (`*_fakes_test.go` + adapter fakes) |
 | External test deps | **0** |
 | testkit functions | 17 (11 assert + 6 must) |
+| Test layers | Service · Handler · Repository |
 
 ---
 
@@ -57,19 +60,20 @@ go.mod dependencies สำหรับ test = 0
 โปรเจกต์ใช้ **Hexagonal Architecture (Ports & Adapters)** ดังนั้น test จะแบ่งเป็น:
 
 ```
-┌─────────────────────────────────────────┐
-│               Test Layer                │
-│                                         │
-│  ┌───────────┐      ┌───────────────┐   │
-│  │   Fakes   │─────▶│  Port (Interface) │
-│  │ (test-only)│      └───────┬───────┘   │
-│  └───────────┘              │            │
-│                     ┌───────▼───────┐   │
-│                     │  App Service  │   │
-│                     │  (Business    │   │
-│                     │   Logic)      │   │
-│                     └───────────────┘   │
-└─────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│                        Test Layer                            │
+│                                                              │
+│   Handler Test          Service Test         Repo Test       │
+│  ┌──────────┐         ┌──────────┐        ┌──────────┐      │
+│  │ fakeRepo │───▶ svc │  Fakes   │──▶port │ fakeRow  │      │
+│  │ +Fiber   │         │(test-only)│        │ (pgx.Row)│      │
+│  │ httptest │         └─────┬────┘        └─────┬────┘      │
+│  └──────────┘               │                   │            │
+│       │              ┌──────▼───────┐    ┌──────▼───────┐   │
+│       └─────────────▶│ App Service  │    │  scan/SQL    │   │
+│                      │ (Business)   │    │  (Repo logic)│   │
+│                      └──────────────┘    └──────────────┘   │
+└──────────────────────────────────────────────────────────────┘
 ```
 
 ### หลักการ
@@ -202,12 +206,14 @@ func (f *fakeUserRepo) FindByUsername(_ context.Context, _ string) (*domain.User
 
 **Pattern ของ fakes ในโปรเจกต์:**
 
-| File | Fake Struct | Interface | Lines |
-|------|------------|-----------|-------|
+| File | Fake Struct | Interface / Target | Lines |
+|------|------------|-------------------|-------|
 | `auth/app/fakes_test.go` | `fakeUserRepo` | `UserRepository` | 12 |
 | | `fakeTokenSigner` | `TokenSigner` | 10 |
 | `quotation/app/fakes_test.go` | `fakeQuotationRepo` | `QuotationRepository` | 18 |
 | `cmi/app/fakes_test.go` | `fakeCMIRepo` | `CMIPolicyRepository` | 12 |
+| `cmi/adapters/http/fakes_test.go` | `fakeRepo` | `CMIPolicyRepository` | 15 |
+| `cmi/adapters/postgres/repository_test.go` | `fakeRow` | `pgx.Row` (external) | 45 |
 | `externaldb/app/fakes_test.go` | `fakeDBProvider` | `ExternalDBProvider` | 15 |
 | `sync/sync_test.go` | `fakeSyncer` | `Syncer` | 15 |
 
@@ -290,6 +296,188 @@ func doRequest(t *testing.T, s *Server, method, path string, body []byte) (int, 
 - Helper ต้องเรียก `t.Helper()` **บรรทัดแรกเสมอ**
 - ชื่อ helper ขึ้นต้นด้วย lowercase (unexported) — ใช้ใน package เดียว
 - Helper ที่ใช้ข้าม package → ย้ายเข้า `internal/testkit/`
+
+---
+
+### 3.5 Handler Testing Pattern (HTTP Layer)
+
+สำหรับ test **HTTP handler** โดยไม่ต้อง start server จริง — ใช้ `fiber.New()` + `httptest.NewRequest`
+
+**หลักการ:**
+
+```
+Fake Repo → Real Service → Real Handler → Fiber App → httptest
+```
+
+Handler test ครอบคลุม: route registration, param parsing, response format, status codes, trace_id
+
+**ตัวอย่าง — Setup & Request Helpers:**
+
+```go
+// setupApp creates a Fiber app with the handler route.
+func setupApp(repo *fakeRepo) *fiber.App {
+    fiberApp := fiber.New()
+    svc := app.NewService(repo)
+    h := NewHandler(svc)
+    fiberApp.Get("/cmi/:job_id/request-policy-single-cmi", h.GetPolicyByJobID)
+    return fiberApp
+}
+
+// doRequest sends a GET request and parses response.
+func doRequest(t *testing.T, fiberApp *fiber.App, jobID string) (*http.Response, dto.ApiResponse) {
+    t.Helper()
+    req := httptest.NewRequest(http.MethodGet, "/cmi/"+jobID+"/request-policy-single-cmi", nil)
+    resp, err := fiberApp.Test(req, -1)
+    testkit.MustNoError(t, err, "fiber.Test")
+
+    body, err := io.ReadAll(resp.Body)
+    testkit.MustNoError(t, err, "read body")
+    defer resp.Body.Close()
+
+    var apiResp dto.ApiResponse
+    testkit.MustNoError(t, json.Unmarshal(body, &apiResp), "unmarshal response")
+    return resp, apiResp
+}
+```
+
+**ตัวอย่าง — test case:**
+
+```go
+func TestGetPolicyByJobID_JobNotFound(t *testing.T) {
+    repo := &fakeRepo{exists: false}
+
+    fiberApp := setupApp(repo)
+    resp, apiResp := doRequest(t, fiberApp, "missing-job")
+
+    testkit.Equal(t, resp.StatusCode, http.StatusNotFound, "status code")
+    testkit.Equal(t, apiResp.Status, "ERROR", "response status")
+    testkit.Equal(t, apiResp.Message, "job not found", "message")
+    testkit.Contains(t, extractTraceID(t, apiResp), dto.TraceCMIJobNotFound, "trace_id")
+}
+```
+
+**กฎ Handler Test:**
+
+| กฎ | เหตุผล |
+|----|--------|
+| ใช้ `setupApp()` สร้าง Fiber app ใหม่ทุก test | แยก state ไม่ให้ test กระทบกัน |
+| `doRequest()` ต้องเรียก `t.Helper()` | Error report ชี้ไปที่ caller ไม่ใช่ helper |
+| Assert ทั้ง status code + body + trace_id | ครอบคลุมทั้ง transport layer และ error format |
+| Fake inject ที่ระดับ repo ไม่ใช่ service | ให้ Service logic ถูก test ไปด้วย (integration ย่อย) |
+
+**ไฟล์ที่เกี่ยวข้อง:**
+
+```
+cmi/adapters/http/
+├── handler.go          ← Production code
+├── handler_test.go     ← Handler tests (4 test cases)
+└── fakes_test.go       ← fakeRepo → implements ports.CMIPolicyRepository
+```
+
+---
+
+### 3.6 Repository Testing Pattern (Database Layer)
+
+สำหรับ test **repository logic** (scan, unmarshal, SQL builder) โดยไม่ต้องเชื่อมต่อ database จริง
+ใช้ **fakeRow** ที่ implement `pgx.Row` interface
+
+**หลักการ:**
+
+```
+fakeRow (mock DB result) → scanCMIPolicy() → assert domain struct
+```
+
+**ตัวอย่าง — fakeRow:**
+
+```go
+type fakeRow struct {
+    values []any
+    err    error
+}
+
+func (f *fakeRow) Scan(dest ...any) error {
+    if f.err != nil {
+        return f.err
+    }
+    for i, val := range f.values {
+        switch d := dest[i].(type) {
+        case *string:
+            *d = val.(string)
+        case *bool:
+            *d = val.(bool)
+        case **int:
+            if val == nil { *d = nil } else { v := val.(int); *d = &v }
+        case *[]byte:
+            switch v := val.(type) {
+            case []byte: *d = v
+            case nil:    *d = nil
+            }
+        case *time.Time:
+            *d = val.(time.Time)
+        // ... more types as needed
+        }
+    }
+    return nil
+}
+```
+
+**ตัวอย่าง — test scan:**
+
+```go
+func TestScanCMIPolicy_Success(t *testing.T) {
+    row := buildSuccessRow(t)  // helper สร้าง fakeRow ที่มีครบทุก column
+
+    pol, err := scanCMIPolicy(row)
+
+    testkit.NoError(t, err)
+    testkit.NotNil(t, pol, "policy")
+    testkit.Equal(t, pol.JobID, "job-001", "JobID")
+    testkit.NotNil(t, pol.Motor, "Motor")
+    testkit.Equal(t, pol.Motor.Brand, "Toyota", "Motor.Brand")
+}
+```
+
+**ตัวอย่าง — test SQL fragments:**
+
+```go
+func TestSQLFragments_NotEmpty(t *testing.T) {
+    tests := []struct {
+        name string
+        fn   func() string
+    }{
+        {"sqlSelectJobFields", sqlSelectJobFields},
+        {"sqlMotorInfo", sqlMotorInfo},
+        {"sqlAssetInfo", sqlAssetInfo},
+        // ... more fragment functions
+    }
+
+    for _, tc := range tests {
+        t.Run(tc.name, func(t *testing.T) {
+            sql := tc.fn()
+            testkit.True(t, len(strings.TrimSpace(sql)) > 0,
+                fmt.Sprintf("%s should not be empty", tc.name))
+        })
+    }
+}
+```
+
+**กฎ Repository Test:**
+
+| กฎ | เหตุผล |
+|----|--------|
+| ใช้ `fakeRow` แทน real DB | ทดสอบ scan logic โดยไม่ต้องมี connection |
+| `buildSuccessRow()` helper สำหรับ happy path | ลด boilerplate + ใช้ซ้ำได้ |
+| Test nil JSON fields แยก | ป้องกัน nil pointer dereference ใน unmarshal |
+| Test invalid JSON แยก | ตรวจ error handling ของ unmarshal |
+| SQL fragment test ใช้ `strings.Contains` | ไม่ผูก exact SQL → ทนต่อ format changes |
+
+**ไฟล์ที่เกี่ยวข้อง:**
+
+```
+cmi/adapters/postgres/
+├── repository.go       ← Production code (scan, unmarshal, SQL builders)
+└── repository_test.go  ← Repo tests (fakeRow, scan tests, SQL fragment tests)
+```
 
 ---
 
@@ -798,20 +986,39 @@ testkit.MustNoError(t, err, "read response")
                     └────────┬─────────┘
                              │
                     ┌────────▼─────────┐
-                    │ มี Port Interface │
-                    │ ใหม่ไหม?          │
+                    │ เลือก Layer ที่    │
+                    │ จะ test           │
                     └────────┬─────────┘
-                        Yes ╱ ╲ No
-                           ╱   ╲
-              ┌───────────▼┐   ╲
-              │ สร้าง Fake  │    ╲
-              │ ใน          │     ╲
-              │ fakes_test.go│     ╲
-              └──────┬──────┘      │
+                    ╱        │         ╲
+                   ╱         │          ╲
+         ┌────────▼──┐ ┌────▼─────┐ ┌───▼──────────┐
+         │  Handler   │ │ Service  │ │  Repository  │
+         │  (HTTP)    │ │ (App)    │ │  (Postgres)  │
+         └────┬───────┘ └────┬─────┘ └───┬──────────┘
+              │              │            │
+     ┌────────▼───────┐     │    ┌───────▼────────┐
+     │ สร้าง fakeRepo │     │    │ สร้าง fakeRow  │
+     │ + setupApp()   │     │    │ + buildRow()   │
+     │ + doRequest()  │     │    │ helper         │
+     └────────┬───────┘     │    └───────┬────────┘
+              │              │            │
+              │    ┌─────────▼──────┐     │
+              │    │ มี Port ใหม่?  │     │
+              │    └────┬──────┬───┘     │
+              │    Yes ╱       ╲ No      │
+              │       ╱         ╲        │
+              │ ┌────▼──────┐    ╲       │
+              │ │ สร้าง Fake │    ╲      │
+              │ │ fakes_test │     ╲     │
+              │ └────┬──────┘      │     │
+              │      │             │     │
+              └──────┼─────────────┼─────┘
                      │             │
               ┌──────▼─────────────▼───┐
-              │  เขียน Table-Driven     │
-              │  Test ใน service_test.go │
+              │  เขียน Test Cases       │
+              │  - Table-Driven (svc)  │
+              │  - Per-function (http) │
+              │  - Scan/SQL (repo)     │
               └──────┬─────────────────┘
                      │
               ┌──────▼──────────────┐
@@ -926,4 +1133,4 @@ go tool cover -html=coverage.out
 
 ---
 
-> v2.0 — March 2026 | ANC Portal Backend Team
+> v3.0 — March 2026 | ANC Portal Backend Team
