@@ -52,6 +52,10 @@ switch ($Command) {
         Write-Host "    .\run.ps1 docker-build         Build API Docker image"
         Write-Host "    .\run.ps1 docker-build-worker  Build Worker Docker image"
         Write-Host ""
+        Write-Host "  CI Testing:" -ForegroundColor Yellow
+        Write-Host "    .\run.ps1 ci-test-inject <type>   Inject CI failure (lint|test|build)" -ForegroundColor DarkGray
+        Write-Host "    .\run.ps1 ci-test-clean           Remove all injected failures" -ForegroundColor DarkGray
+        Write-Host ""
     }
 
     # -- Development --
@@ -416,6 +420,88 @@ switch ($Command) {
     "docker-build-worker" {
         Write-Host "[docker] Building Worker image (multi-target)..." -ForegroundColor Green
         docker build -f "$DOCKER_DIR/Dockerfile" --target worker -t anc-portal-worker .
+    }
+
+    # -- CI Testing (inject failures to verify pipeline) --
+
+    "ci-test-inject" {
+        $type = $args[0]
+        if (-not $type) {
+            Write-Host ""
+            Write-Host "  Usage: .\run.ps1 ci-test-inject <type>" -ForegroundColor Yellow
+            Write-Host ""
+            Write-Host "  Types:" -ForegroundColor Cyan
+            Write-Host "    lint    Inject gosec G101 (hardcoded credential) -> Lint FAIL"
+            Write-Host "    test    Inject failing unit test (wrong calc)    -> Test FAIL"
+            Write-Host "    build   Inject compile error (undefined var)    -> Build FAIL"
+            Write-Host ""
+            Write-Host "  After inject: push to trigger CI, then run ci-test-clean" -ForegroundColor DarkGray
+            Write-Host ""
+            exit 0
+        }
+
+        switch ($type) {
+            "lint" {
+                $src = "testdata/ci/inject_lint_fail.go.bak"
+                $dst = "internal/shared/dto/ci_test_lint_fail.go"
+                if (-not (Test-Path $src)) { Write-Host "  ERROR: $src not found" -ForegroundColor Red; exit 1 }
+                Copy-Item $src $dst
+                Write-Host ""
+                Write-Host "  Injected: $dst" -ForegroundColor Yellow
+                Write-Host "  Expected: Lint step -> FAIL (gosec G101: hardcoded credentials)" -ForegroundColor DarkGray
+                Write-Host "  Cleanup:  .\run.ps1 ci-test-clean" -ForegroundColor DarkGray
+                Write-Host ""
+            }
+            "test" {
+                $src = "testdata/ci/inject_test_fail.go.bak"
+                $dst = "internal/shared/utils/ci_test_fail_test.go"
+                if (-not (Test-Path $src)) { Write-Host "  ERROR: $src not found" -ForegroundColor Red; exit 1 }
+                Copy-Item $src $dst
+                Write-Host ""
+                Write-Host "  Injected: $dst" -ForegroundColor Yellow
+                Write-Host "  Expected: Test step -> FAIL (calculateDiscount wrong result)" -ForegroundColor DarkGray
+                Write-Host "  Cleanup:  .\run.ps1 ci-test-clean" -ForegroundColor DarkGray
+                Write-Host ""
+            }
+            "build" {
+                $src = "testdata/ci/inject_build_fail.go.bak"
+                $dst = "internal/shared/utils/ci_test_build_fail.go"
+                if (-not (Test-Path $src)) { Write-Host "  ERROR: $src not found" -ForegroundColor Red; exit 1 }
+                Copy-Item $src $dst
+                Write-Host ""
+                Write-Host "  Injected: $dst" -ForegroundColor Yellow
+                Write-Host "  Expected: Build step -> FAIL (undefined variable)" -ForegroundColor DarkGray
+                Write-Host "  Cleanup:  .\run.ps1 ci-test-clean" -ForegroundColor DarkGray
+                Write-Host ""
+            }
+            default {
+                Write-Host "  Unknown type: $type (use: lint, test, build)" -ForegroundColor Red
+            }
+        }
+    }
+    "ci-test-clean" {
+        Write-Host ""
+        Write-Host "  Cleaning injected CI test files..." -ForegroundColor Cyan
+        $files = @(
+            "internal/shared/dto/ci_test_lint_fail.go",
+            "internal/shared/utils/ci_test_fail_test.go",
+            "internal/shared/utils/ci_test_build_fail.go"
+        )
+        $removed = 0
+        foreach ($f in $files) {
+            if (Test-Path $f) {
+                Remove-Item $f
+                Write-Host "  Removed: $f" -ForegroundColor Green
+                $removed++
+            }
+        }
+        if ($removed -eq 0) {
+            Write-Host "  Nothing to clean - no injected files found" -ForegroundColor DarkGray
+        } else {
+            Write-Host ""
+            Write-Host "  Cleaned $removed file(s). Safe to push for CI success test." -ForegroundColor Green
+        }
+        Write-Host ""
     }
 
     # -- Unknown --

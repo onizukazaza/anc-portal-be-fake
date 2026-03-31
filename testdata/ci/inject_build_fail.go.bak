@@ -1,0 +1,17 @@
+// ──────────────────────────────────────────────────────────
+// CI Test: Build Failure (compile error)
+// ──────────────────────────────────────────────────────────
+// ใช้ทดสอบว่า CI Build step จับ compile error ได้จริง
+// Copy ไปวางที่ internal/shared/utils/ci_test_build_fail.go
+// แล้ว push → ดู CI ว่า Build fail + Discord แจ้ง
+//
+// ลบออก: ลบไฟล์ internal/shared/utils/ci_test_build_fail.go
+// ──────────────────────────────────────────────────────────
+package utils
+
+import "fmt"
+
+// compile error: undefined variable
+func CIBuildFailTest() {
+	fmt.Println(undefinedVariable) // ← จะ compile ไม่ผ่าน
+}

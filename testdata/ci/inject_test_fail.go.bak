@@ -1,0 +1,28 @@
+// ──────────────────────────────────────────────────────────
+// CI Test: Test Failure (unit test ที่ fail ตลอด)
+// ──────────────────────────────────────────────────────────
+// ใช้ทดสอบว่า CI Test step จับ failure ได้จริง
+// Copy ไปวางที่ internal/shared/utils/ci_test_fail_test.go
+// แล้ว push → ดู CI ว่า Test fail + Discord แจ้ง
+//
+// ลบออก: ลบไฟล์ internal/shared/utils/ci_test_fail_test.go
+// ──────────────────────────────────────────────────────────
+package utils
+
+import "testing"
+
+func TestCIFailure_AlwaysFails(t *testing.T) {
+	// Scenario: ทดสอบ business logic ที่ return ค่าผิด
+	expected := 100
+	actual := calculateDiscount(1000, 15) // คาดว่าได้ 150 แต่ function return 100
+
+	if actual != expected {
+		t.Errorf("calculateDiscount(1000, 15) = %d; want %d — discount logic ผิดพลาด", actual, expected)
+	}
+}
+
+// จำลอง function ที่มี bug จริง
+func calculateDiscount(price, percent int) int {
+	// BUG: ลืมคูณ percent → return ผิด
+	return price * percent / 100 // return 150 ไม่ใช่ 100 → test fail
+}

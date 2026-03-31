@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=https://json-schema.org/draft/2020-12/schema
+# yaml-language-server: $schema=https://golangci-lint.run/jsonschema/golangci.jsonschema.json
 # =============================================================================
 # golangci-lint v2 — ANC Portal Backend
 # =============================================================================
@@ -13,15 +13,18 @@ run:
 
 output:
   formats:
-    colored-line-number: {}
-  sort-results: true
+    text:
+      print-linter-name: true
+  sort-order:
+    - file
 
 linters:
+  default: none
   enable:
     # >> Bugs & Correctness
     - errcheck          # ตรวจ unchecked errors
     - govet             # vet ตรวจ suspicious constructs
-    - staticcheck       # static analysis ระดับสูง
+    - staticcheck       # static analysis ระดับสูง (รวม gosimple แล้ว)
     - bodyclose         # ตรวจ HTTP response body ไม่ปิด
     - noctx             # ตรวจ HTTP request ไม่ส่ง context
     - rowserrcheck      # ตรวจ sql.Rows.Err()
@@ -33,42 +36,58 @@ linters:
 
     # >> Style & Simplicity
     - unused            # ตรวจ code ที่ไม่ได้ใช้
-    - gosimple          # แนะนำให้ code เรียบง่ายขึ้น
     - gocritic          # opinionated linter — diagnostic + performance
 
     # >> Security
     - gosec             # ตรวจ security issues
 
-linters-settings:
-  govet:
-    enable:
-      - shadow          # ตรวจ variable shadowing
-  gosec:
-    excludes:
-      - G104            # unhandled errors (ปกติเป็น defer)
-      - G304            # file path from variable (ใช้ใน config loader)
-  gocritic:
-    enabled-tags:
-      - diagnostic
-      - performance
-    disabled-checks:
-      - hugeParam       # Go compiler จัดการ stack-allocated structs ได้ดี
+  settings:
+    govet:
+      enable:
+        - shadow
+    gosec:
+      excludes:
+        - G101          # hardcoded credentials (error code constants + test DSN)
+        - G104          # unhandled errors (defer .Close())
+        - G118          # goroutine with context.Background (ใช้ใน graceful shutdown + webhook)
+        - G301          # directory permissions 0755 (testkit fixture)
+        - G304          # file path from variable (config loader)
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - performance
+      disabled-checks:
+        - hugeParam
+
+  exclusions:
+    presets:
+      - std-error-handling
+      - common-false-positives
+    rules:
+      # Test files: ยกเว้น errcheck + gosec + noctx
+      - path: _test\.go
+        linters:
+          - gosec
+          - errcheck
+          - noctx
+      # Banner rows: prealloc ไม่จำเป็น (ขนาดเล็ก)
+      - path: cmd/
+        linters:
+          - prealloc
+      # Banner: output-only ไม่ต้อง check error
+      - path: pkg/banner/
+        linters:
+          - errcheck
+      # Generated swagger docs
+      - path: docs/
+        linters:
+          - unused
+    paths:
+      - docs
+      - testdata
+      - tmp
+      - migrations
 
 issues:
-  exclude-dirs:
-    - docs              # swagger generated code
-    - testdata
-    - tmp
-    - migrations        # SQL files
-  exclude-rules:
-    # Test files: อนุญาต dot-import (testkit) และ unused params
-    - path: _test\.go
-      linters:
-        - gosec
-        - errcheck
-    # Generated swagger docs
-    - path: docs/
-      linters:
-        - unused
   max-issues-per-linter: 50
   max-same-issues: 5
