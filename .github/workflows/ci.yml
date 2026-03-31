@@ -318,6 +318,8 @@ jobs:
     runs-on: ubuntu-latest
     if: always()
     needs: [lint, test, vuln, build, docker, scan]
+    env:
+      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
     steps:
       - name: Determine overall status
         id: status
@@ -445,7 +447,7 @@ jobs:
           echo "Built payload for status: ${STATUS}"
 
       - name: Send Discord notification
-        if: secrets.DISCORD_WEBHOOK_URL != ''
+        if: env.DISCORD_WEBHOOK_URL != ''
         run: |
           curl -sf -H "Content-Type: application/json" \
             -d @payload.json \

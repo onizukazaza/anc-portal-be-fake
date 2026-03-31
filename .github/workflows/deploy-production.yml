@@ -34,6 +34,8 @@ jobs:
   deploy:
     name: Deploy to Production
     runs-on: ubuntu-latest
+    env:
+      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
     environment:
       name: production             # ← ต้องตั้ง protection rules + required reviewers ใน GitHub
       url: https://api.portal.anc.co.th/healthz
@@ -155,14 +157,14 @@ jobs:
 
       # ─── Notifications ───
       - name: Notify success (Discord)
-        if: success() && secrets.DISCORD_WEBHOOK_URL != ''
+        if: success() && env.DISCORD_WEBHOOK_URL != ''
         run: |
           curl -sf -H "Content-Type: application/json" \
             -d "{\"embeds\":[{\"title\":\"✅ Production Deployed\",\"color\":3066993,\"fields\":[{\"name\":\"Tag\",\"value\":\"\`${{ steps.tag.outputs.image_tag }}\`\",\"inline\":true},{\"name\":\"Author\",\"value\":\"${{ github.actor }}\",\"inline\":true}],\"url\":\"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\",\"footer\":{\"text\":\"ANC Portal CD\"}}]}" \
             "${{ secrets.DISCORD_WEBHOOK_URL }}" || true
 
       - name: Notify failure (Discord)
-        if: failure() && secrets.DISCORD_WEBHOOK_URL != ''
+        if: failure() && env.DISCORD_WEBHOOK_URL != ''
         run: |
           curl -sf -H "Content-Type: application/json" \
             -d "{\"embeds\":[{\"title\":\"❌ Production Deploy Failed\",\"color\":15158332,\"fields\":[{\"name\":\"Tag\",\"value\":\"\`${{ steps.tag.outputs.image_tag }}\`\",\"inline\":true},{\"name\":\"Author\",\"value\":\"${{ github.actor }}\",\"inline\":true}],\"url\":\"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\",\"footer\":{\"text\":\"ANC Portal CD\"}}]}" \

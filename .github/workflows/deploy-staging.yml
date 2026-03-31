@@ -30,6 +30,8 @@ jobs:
   deploy:
     name: Deploy to Staging
     runs-on: ubuntu-latest
+    env:
+      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
     # รันเฉพาะเมื่อ CI สำเร็จ (หรือ manual dispatch)
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     environment:
@@ -142,7 +144,7 @@ jobs:
 
       # ─── Notify on success ───
       - name: Notify success (Discord)
-        if: success() && secrets.DISCORD_WEBHOOK_URL != ''
+        if: success() && env.DISCORD_WEBHOOK_URL != ''
         run: |
           curl -sf -H "Content-Type: application/json" \
             -d "{\"embeds\":[{\"title\":\"✅ Staging Deployed\",\"color\":3066993,\"fields\":[{\"name\":\"Commit\",\"value\":\"\`${{ steps.tag.outputs.sha }}\`\",\"inline\":true},{\"name\":\"Author\",\"value\":\"${{ github.actor }}\",\"inline\":true}],\"url\":\"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\",\"footer\":{\"text\":\"ANC Portal CD\"}}]}" \
@@ -150,7 +152,7 @@ jobs:
 
       # ─── Notify on failure ───
       - name: Notify failure (Discord)
-        if: failure() && secrets.DISCORD_WEBHOOK_URL != ''
+        if: failure() && env.DISCORD_WEBHOOK_URL != ''
         run: |
           curl -sf -H "Content-Type: application/json" \
             -d "{\"embeds\":[{\"title\":\"❌ Staging Deploy Failed\",\"color\":15158332,\"fields\":[{\"name\":\"Commit\",\"value\":\"\`${{ steps.tag.outputs.sha }}\`\",\"inline\":true},{\"name\":\"Author\",\"value\":\"${{ github.actor }}\",\"inline\":true}],\"url\":\"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\",\"footer\":{\"text\":\"ANC Portal CD\"}}]}" \
