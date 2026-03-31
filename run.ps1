@@ -110,6 +110,80 @@ switch ($Command) {
 
         Write-Host ""
         Write-Host "  HTML report: go tool cover -html=coverage.out" -ForegroundColor DarkGray
+
+        # ── Discord notification ──
+        $webhookUrl = $env:DISCORD_WEBHOOK_URL
+        if (-not $webhookUrl -and (Test-Path ".env.local")) {
+            $line = Get-Content ".env.local" | Where-Object { $_ -match "^DISCORD_WEBHOOK_URL=" } | Select-Object -First 1
+            if ($line) { $webhookUrl = ($line -split "=", 2)[1].Trim('"').Trim("'") }
+        }
+
+        if ($webhookUrl) {
+            Write-Host ""
+            Write-Host "  Sending coverage to Discord..." -ForegroundColor DarkGray -NoNewline
+
+            $branch = git rev-parse --abbrev-ref HEAD 2>$null
+            if (-not $branch) { $branch = "unknown" }
+            $sha = git rev-parse --short HEAD 2>$null
+            if (-not $sha) { $sha = "unknown" }
+            $hostname = $env:COMPUTERNAME
+            $username = $env:USERNAME
+            $repoUrl = git config --get remote.origin.url 2>$null
+            if ($repoUrl) {
+                $repoUrl = $repoUrl -replace '\.git$', ''
+                $repoUrl = $repoUrl -replace 'git@github\.com:', 'https://github.com/'
+            }
+
+            # Collect per-package coverage (skip no-test packages)
+            $pkgLines = @()
+            $coverOutput | ForEach-Object {
+                if ($_ -match 'total:') { return }
+                if ($_ -match '(\S+)\s+\S+\s+([\d\.]+)%') {
+                    $pkg = $Matches[1] -replace '^github\.com/onizukazaza/anc-portal-be-fake/', ''
+                    $pct = $Matches[2]
+                    $pkgLines += "``${pkg}`` ${pct}%"
+                }
+            }
+            $pkgText = if ($pkgLines.Count -gt 0) { ($pkgLines | Select-Object -First 15) -join '\n' } else { "no packages" }
+            if ($pkgLines.Count -gt 15) { $pkgText += "\n... +$($pkgLines.Count - 15) more" }
+
+            # Status
+            if ($coverage -ge $threshold) {
+                $emoji = "\u2705"
+                $statusText = "PASSED"
+                $color = 3066993
+            } else {
+                $emoji = "\u274c"
+                $statusText = "FAILED"
+                $color = 15158332
+            }
+
+            $ts = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+            $localTime = (Get-Date).ToString("dd MMM yyyy HH:mm:ss")
+
+            $commitField = "``${sha}``"
+            if ($repoUrl) {
+                $fullSha = git rev-parse HEAD 2>$null
+                if ($fullSha) {
+                    $commitUrl = "${repoUrl}/commit/${fullSha}"
+                    $commitField = "[``${sha}``](${commitUrl})"
+                }
+            }
+
+            $desc = "``````env\nENV        = local\nSTATUS     = ${statusText}\nCOVERAGE   = ${coverage}%\nTHRESHOLD  = ${threshold}%\nTESTED AT  = ${localTime}\nMACHINE    = ${username}@${hostname}\n``````"
+
+            $payload = @"
+{"embeds":[{"title":"$emoji Coverage Report — ${coverage}%","description":"$desc","color":$color,"fields":[{"\u006eame":"\ud83d\udd00 Branch","value":"``$branch``","inline":true},{"name":"\ud83d\udcdd Commit","value":"$commitField","inline":true},{"name":"\ud83d\udc64 Author","value":"${username}","inline":true},{"name":"\ud83d\udce6 Packages","value":"${pkgText}","inline":false}],"footer":{"text":"\ud83d\udce1 ANC Portal CI \u2022 Coverage"},"timestamp":"$ts"}]}
+"@
+            $utf8 = [System.Text.Encoding]::UTF8.GetBytes($payload)
+
+            try {
+                Invoke-WebRequest -Uri $webhookUrl -Method Post -Body $utf8 -ContentType "application/json; charset=utf-8" -UseBasicParsing | Out-Null
+                Write-Host " sent!" -ForegroundColor Green
+            } catch {
+                Write-Host " failed: $($_.Exception.Message)" -ForegroundColor Red
+            }
+        }
     }
     "lint" {
         Write-Host "[lint] Running golangci-lint..." -ForegroundColor Green

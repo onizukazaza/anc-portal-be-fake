@@ -60,6 +60,7 @@
 - [📊 Grafana — Observability Dashboard](#-grafana--observability-dashboard)
 - [🤖 Dependabot — Auto Dependency Updates](#-dependabot--auto-dependency-updates)
 - [🧪 Unit Test — Testing Strategy](#-unit-test--testing-strategy)
+- [📈 Coverage & Test Logging](#-coverage--test-logging)
 - [🏗️ โครงสร้างโปรเจกต์](#️-โครงสร้างโปรเจกต์)
 - [🎯 Entry Points](#-entry-points)
 - [📚 เอกสาร](#-เอกสาร)
@@ -416,6 +417,91 @@ go test ./... -coverprofile=coverage.out           # พร้อม coverage
 ```
 
 > 📝 รายละเอียด → [Unit Test Guide](documents/testing/unit-test-guide.md) | [Cheatsheet](documents/testing/unit-test-cheatsheet.md)
+
+---
+
+## 📈 Coverage & Test Logging
+
+แนวคิดการเก็บ coverage และบันทึกผลการ test — ทุกครั้งที่รัน จะมี **report + Discord notification** อัตโนมัติ
+
+```
+  ┌─────────────────────────────────────────────────────────────────┐
+  │                  Coverage & Logging Flow                        │
+  │                                                                 │
+  │   Developer                                                     │
+  │       │                                                         │
+  │       ▼                                                         │
+  │   .\run.ps1 test-cover                                          │
+  │       │                                                         │
+  │       ├──▶ go test -coverprofile -covermode atomic ./...        │
+  │       │         │                                               │
+  │       │         ├── coverage.out  (raw data)                    │
+  │       │         └── per-package % breakdown                     │
+  │       │                                                         │
+  │       ├──▶ Threshold Check (≥ 25%)                              │
+  │       │         ├── PASS → ✅ continue                          │
+  │       │         └── FAIL → ❌ exit 1                            │
+  │       │                                                         │
+  │       └──▶ Discord Notification                                 │
+  │                 │                                               │
+  │                 ▼                                               │
+  │   ┌──────────────────────────────────┐                          │
+  │   │ ✅ Coverage Report — 30.9%       │                          │
+  │   │ ┌──────────────────────────────┐ │                          │
+  │   │ │ ENV      = local             │ │                          │
+  │   │ │ STATUS   = PASSED            │ │                          │
+  │   │ │ COVERAGE = 30.9%             │ │                          │
+  │   │ │ THRESHOLD= 25%              │ │                          │
+  │   │ │ TESTED AT= 31 Mar 2026 22:15│ │                          │
+  │   │ │ MACHINE  = user@DESKTOP      │ │                          │
+  │   │ └──────────────────────────────┘ │                          │
+  │   │ 🔀 Branch  📝 Commit  👤 Author │                          │
+  │   │ 📦 Per-package breakdown        │                          │
+  │   └──────────────────────────────────┘                          │
+  └─────────────────────────────────────────────────────────────────┘
+```
+
+### คำสั่งที่ใช้
+
+| คำสั่ง | ผลลัพธ์ |
+|--------|---------|
+| `.\run.ps1 test-cover` | รัน test + coverage + threshold check + Discord log |
+| `.\run.ps1 ci` | full pipeline (lint → test → vuln → build) + Discord log |
+| `go tool cover -html=coverage.out` | เปิด HTML report ในเบราว์เซอร์ |
+| `go tool cover -func=coverage.out` | แสดง coverage แต่ละ function |
+
+### สิ่งที่ถูกบันทึก (Discord Log)
+
+ทุกครั้งที่รัน `test-cover` หรือ `ci` จะบันทึกลง Discord พร้อมข้อมูล:
+
+| ข้อมูล | ตัวอย่าง | ทำไมต้องเก็บ |
+|--------|---------|--------------|
+| วัน-เวลาที่ test | `31 Mar 2026 22:15:30` | ดูว่าเทสล่าสุดเมื่อไหร่ |
+| Coverage % | `30.9%` | ดู trend ว่าขึ้นหรือลง |
+| Threshold | `25%` | ป้องกัน coverage ตกต่ำกว่าเกณฑ์ |
+| Branch + Commit | `main` / `8574c0d` | ผูกกับ code version |
+| Machine / Author | `guitar@DESKTOP` | รู้ว่าใครรัน จาก machine ไหน |
+| Per-package breakdown | แต่ละ package กี่ % | หา package ที่ coverage ต่ำ |
+| PASS / FAIL status | ✅ / ❌ | แจ้งเตือนทีมทันทีถ้า fail |
+
+### Threshold Strategy
+
+```
+เริ่มต้น:  25%  ← ปัจจุบัน (โปรเจกต์ใหม่ยังมี test ไม่ครบ)
+   ↓
+ค่อย ๆ ขึ้น:  +5% ทุกครั้งที่เพิ่ม test ครบ module
+   ↓
+เป้าหมาย:  70%  ← เกณฑ์มาตรฐานสำหรับ production
+```
+
+> ปรับ threshold ที่ `run.ps1` → `$threshold = 25` และ `Makefile` → `COVERAGE_THRESHOLD ?= 70`
+
+### ทำไมต้องส่ง Discord?
+
+- **Visibility** — ทีมเห็นผล test ทันทีไม่ต้องเปิด terminal
+- **History** — Discord เก็บ log ย้อนหลังได้ ดู trend coverage ตาม timeline
+- **Accountability** — รู้ว่า commit ไหนทำ coverage ตก ใครเป็นคนรัน
+- **Pattern เดียวกัน** — ทั้ง `ci` และ `test-cover` ส่ง Discord format เดียวกัน (infra-style)
 
 ---
 
