@@ -1,14 +1,15 @@
 # yaml-language-server: $schema=https://json-schema.org/draft/2020-12/schema
 # =============================================================================
-# golangci-lint — ANC Portal Backend
+# golangci-lint v2 — ANC Portal Backend
 # =============================================================================
 # ใช้: golangci-lint run
-# CI: golangci-lint-action@v6 จะอ่านไฟล์นี้อัตโนมัติ
+# CI: golangci-lint-action@v7 จะอ่านไฟล์นี้อัตโนมัติ
 # =============================================================================
+
+version: "2"
 
 run:
   timeout: 5m
-  modules-download-mode: readonly
 
 output:
   formats:
@@ -21,7 +22,6 @@ linters:
     - errcheck          # ตรวจ unchecked errors
     - govet             # vet ตรวจ suspicious constructs
     - staticcheck       # static analysis ระดับสูง
-    - typecheck         # type-checking errors
     - bodyclose         # ตรวจ HTTP response body ไม่ปิด
     - noctx             # ตรวจ HTTP request ไม่ส่ง context
     - rowserrcheck      # ตรวจ sql.Rows.Err()
@@ -69,7 +69,6 @@ issues:
     # Generated swagger docs
     - path: docs/
       linters:
-        - typecheck
         - unused
   max-issues-per-linter: 50
   max-same-issues: 5
