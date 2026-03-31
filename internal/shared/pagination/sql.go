@@ -33,7 +33,7 @@ func CountQuery(table, baseWhere string) string {
 //
 //	q := pagination.From("quotations").
 //	    Select("id", "doc_no", "total_amount", "status", "created_at").
-//	    Where("customer_id = $1").
+//	    Where("customer_id = $1", 1).
 //	    Search("doc_no", "status").
 //	    Paginate(pg, "created_at", allowedSorts)
 //
@@ -42,13 +42,14 @@ func CountQuery(table, baseWhere string) string {
 
 // Query เก็บ state ของ paginated query ที่สร้างแบบ fluent
 type Query struct {
-	table      string
-	columns    []string
-	where      string
-	searchCols []string
-	req        Request
-	defSort    string
-	allowed    AllowedColumns
+	table           string
+	columns         []string
+	where           string
+	whereParamCount int // จำนวน $-params ใน where clause (caller กำหนดชัดเจน)
+	searchCols      []string
+	req             Request
+	defSort         string
+	allowed         AllowedColumns
 }
 
 // From เริ่มสร้าง query จากชื่อ table
@@ -63,8 +64,13 @@ func (q *Query) Select(cols ...string) *Query {
 }
 
 // Where กำหนด WHERE clause (ไม่ต้องใส่คำว่า "WHERE")
-func (q *Query) Where(clause string) *Query {
+// paramCount คือจำนวน $-placeholder ใน clause เช่น "customer_id = $1" → paramCount=1
+// ถ้าไม่ส่ง paramCount หรือส่ง 0 จะตั้งค่าเป็น 0 (ไม่มี params)
+func (q *Query) Where(clause string, paramCount ...int) *Query {
 	q.where = clause
+	if len(paramCount) > 0 {
+		q.whereParamCount = paramCount[0]
+	}
 	return q
 }
 
@@ -135,11 +141,9 @@ func (q *Query) PlainSQL() string {
 }
 
 // SearchParamIndex คืน parameter index ($N) สำหรับ search value
-// ใช้เมื่อ Request.Search ไม่ว่าง — caller ต้องส่ง "%"+req.Search+"%" เป็น param ตัวนี้
-//
-// ตัวอย่าง: Where ใช้ $1 → SearchParamIndex(2) → search ใช้ $2
-func (q *Query) SearchParamIndex(startIdx int) int {
-	return startIdx
+// เช่น Where ใช้ $1 (paramCount=1) → SearchParamIndex() คืน 2
+func (q *Query) SearchParamIndex() int {
+	return q.whereParamCount + 1
 }
 
 // HasSearch return true ถ้ามี search condition
@@ -171,9 +175,9 @@ func (q *Query) fullWhere() string {
 }
 
 // searchClause สร้าง (col1 ILIKE $N OR col2 ILIKE $N)
-// ใช้ $N โดย N = จำนวน $-params ใน where + 1
+// ใช้ whereParamCount เพื่อหา $N ถัดไปอย่างถูกต้อง
 func (q *Query) searchClause() string {
-	paramIdx := strings.Count(q.where, "$") + 1
+	paramIdx := q.whereParamCount + 1
 	placeholder := fmt.Sprintf("$%d", paramIdx)
 
 	conditions := make([]string, len(q.searchCols))

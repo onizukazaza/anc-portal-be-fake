@@ -47,7 +47,7 @@ func (h *Handler) Login(c *fiber.Ctx) error {
 
 	var req loginRequest
 	if err := validator.BindAndValidate(c, &req); err != nil {
-		return nil // response already sent
+		return err
 	}
 
 	session, err := h.service.Login(ctx, req.Username, req.Password)

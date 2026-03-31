@@ -26,6 +26,10 @@ package dto
 //  10001 | auth-bind-failed       | 400  | request body ไม่ถูกต้อง
 //  10002 | auth-invalid-creds     | 401  | username/password ไม่ถูกต้อง
 //  10003 | auth-internal-error    | 500  | เกิดข้อผิดพลาดภายใน auth service
+//  10004 | auth-token-missing     | 401  | ไม่มี Authorization header หรือ token ว่าง
+//  10005 | auth-token-invalid     | 401  | token ไม่ถูกต้องหรือหมดอายุ
+//  10006 | auth-apikey-missing    | 401  | ไม่มี X-API-Key header
+//  10007 | auth-apikey-invalid    | 401  | API key ไม่ถูกต้อง
 //  ──────|────────────────────────|──────|──────────────────────────
 //  11001 | qt-id-required         | 400  | ไม่ได้ส่ง quotation id
 //  11002 | qt-not-found           | 404  | ไม่พบ quotation
@@ -58,6 +62,10 @@ const (
 	TraceAuthBindFailed    = "auth-bind-failed"    // 10001 | 400 | request body ไม่ถูกต้อง
 	TraceAuthBadLogin      = "auth-invalid-creds"  // 10002 | 401 | username/password ไม่ถูกต้อง
 	TraceAuthInternalError = "auth-internal-error" // 10003 | 500 | เกิดข้อผิดพลาดภายใน auth service
+	TraceAuthNoHeader      = "auth-token-missing"  // 10004 | 401 | ไม่มี Authorization header หรือ token ว่าง
+	TraceAuthVerifyFailed  = "auth-token-invalid"  // 10005 | 401 | token ไม่ถูกต้องหรือหมดอายุ
+	TraceAuthAPIKeyMissing = "auth-apikey-missing" //nolint:gosec // G101: trace ID label, not a credential
+	TraceAuthAPIKeyInvalid = "auth-apikey-invalid" //nolint:gosec // G101: trace ID label, not a credential
 )
 
 // ─── Quotation (11xxx) ───────────────────────────────────────────

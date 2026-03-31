@@ -41,9 +41,10 @@ const (
 
 const (
 	// >> Auth
-	TracerAuthHandler = "auth.handler"
-	TracerAuthService = "auth.service"
-	TracerAuthRepo    = "auth.repository"
+	TracerAuthHandler    = "auth.handler"
+	TracerAuthMiddleware = "auth.middleware"
+	TracerAuthService    = "auth.service"
+	TracerAuthRepo       = "auth.repository"
 
 	// >> CMI (Compulsory Motor Insurance)
 	TracerCMIHandler = "cmi.handler"

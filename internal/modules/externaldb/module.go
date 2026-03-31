@@ -19,6 +19,6 @@ func Register(router fiber.Router, deps module.Deps) {
 	controller := exthttp.NewExternalDBController(service)
 
 	group := router.Group("/external-db")
-	group.Get("/health", controller.CheckAll)
-	group.Get("/health/:name", controller.CheckByName)
+	group.Get("/health", deps.Middleware.JWTAuth, controller.CheckAll)
+	group.Get("/health/:name", deps.Middleware.JWTAuth, controller.CheckByName)
 }

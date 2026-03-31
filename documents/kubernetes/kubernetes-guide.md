@@ -1,6 +1,6 @@
 # Kubernetes (K8s) Complete Guide — ANC Portal Backend
 
-> **v1.0** — Last updated: March 2026
+> **v1.1** — Last updated: March 2026
 >
 > คู่มือ Kubernetes ฉบับสมบูรณ์ — เขียนสำหรับผู้เริ่มต้น
 > ครอบคลุมตั้งแต่แนวคิดพื้นฐาน, ศัพท์เฉพาะทาง, ไปจนถึงการ Deploy จริงบน Cluster
@@ -42,6 +42,8 @@
 18. [Troubleshooting — แก้ปัญหา](#18-troubleshooting--แก้ปัญหา)
 19. [ตารางเปรียบเทียบ Spec ทุก Environment](#19-ตารางเปรียบเทียบ-spec-ทุก-environment)
 20. [Checklist ก่อน Deploy](#20-checklist-ก่อน-deploy)
+
+> **เอกสารเพิ่มเติม:** [Resource & Spec Guide](resource-spec-guide.md) — คู่มือการตั้งค่า CPU/Memory, capacity planning, LimitRange, ResourceQuota
 
 ---
 
@@ -467,6 +469,13 @@ kubectl config set-context --current --namespace=anc-portal
 | | `KAFKA_BROKERS` | `kafka.anc-portal.svc.cluster.local:9092` | Kafka broker address |
 | | `KAFKA_TOPIC` | `anc-portal-events` | ชื่อ topic ส่ง/รับ message |
 | | `KAFKA_GROUP_ID` | `anc-portal-worker` | Consumer group ID |
+| | `KAFKA_DLQ_TOPIC` | `anc-portal-events-dlq` | Dead letter queue topic |
+| | `KAFKA_MAX_RETRIES` | `3` | retry ก่อนส่ง DLQ |
+| **API Key** | `SERVER_API_KEY_INTERNAL` | `(set in Secret)` | API key สำหรับ internal service |
+| | `SERVER_API_KEY_PARTNER` | `(set in Secret)` | API key สำหรับ partner |
+| **External DB** | `EXTERNAL_DBS_{NAME}_HOST` | `(per-database)` | Host ของ external DB |
+| | `EXTERNAL_DBS_{NAME}_DRIVER` | `postgres` / `mysql` | Driver type (multi-driver support) |
+| | `EXTERNAL_DBS_{NAME}_PORT` | `5432` / `3306` | Port ตาม driver |
 | **OTel** | `OTEL_ENABLED` | `true` | เปิด/ปิด OpenTelemetry tracing |
 | | `OTEL_SERVICE_NAME` | `anc-portal-be` | ชื่อ service ใน traces |
 | | `OTEL_ENV` | `staging` | environment label |
@@ -1580,4 +1589,8 @@ kubectl get endpoints -n anc-portal
 
 ---
 
-> **v1.0** — March 2026 | ANC Portal Backend Team
+> **v1.1** — March 2026 | ANC Portal Backend Team
+>
+> **Changelog:**
+> - v1.1: เพิ่ม External DB (multi-driver), API Key config, Kafka DLQ, อ้างอิง resource-spec-guide.md
+> - v1.0: Initial release

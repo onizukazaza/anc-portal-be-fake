@@ -449,7 +449,7 @@ Helpers: `Success()`, `SuccessWithMessage()`, `SuccessWithMeta()`, `Error()`, `E
 - Helper: `dto.ErrorWithTrace(c, status, message, traceID)`
 - Swagger: ทุก `@Failure` annotation ใช้ `dto.ErrorResponse` + trace_id description
 
-ดูรายละเอียด: [Swagger Overview](swagger-overview.md#error-response--traceid)
+ดูรายละเอียด: [Swagger Concept](swagger-concept.md#error-response--traceid)
 
 ### Pagination — Fluent SQL Builder
 

@@ -72,6 +72,8 @@ info:
     | Auth | auth-bind-failed | 10001 | 400 | request body ไม่ถูกต้อง |
     | Auth | auth-invalid-creds | 10002 | 401 | username/password ไม่ถูกต้อง |
     | Auth | auth-internal-error | 10003 | 500 | เกิดข้อผิดพลาดภายใน auth service |
+    | Auth | auth-token-missing | 10004 | 401 | ไม่มี Authorization header หรือ token ว่าง |
+    | Auth | auth-token-invalid | 10005 | 401 | token ไม่ถูกต้องหรือหมดอายุ |
     | Quotation | qt-id-required | 11001 | 400 | ไม่ได้ส่ง quotation id |
     | Quotation | qt-not-found | 11002 | 404 | ไม่พบ quotation |
     | Quotation | qt-internal-error | 11003 | 500 | เกิดข้อผิดพลาดภายใน quotation service |

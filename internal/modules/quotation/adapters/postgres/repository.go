@@ -63,7 +63,7 @@ func (r *QuotationRepository) FindByCustomerID(ctx context.Context, customerID s
 	// 1 query ดึงทั้ง data + total ด้วย COUNT(*) OVER()
 	q := pagination.From("quotations").
 		Select(selectColumns...).
-		Where("customer_id = $1").
+		Where("customer_id = $1", 1).
 		Paginate(pg, "created_at", allowedSorts)
 
 	rows, err := r.pool.Query(ctx, q.DataSQL(), customerID)

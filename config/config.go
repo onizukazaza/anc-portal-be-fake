@@ -21,6 +21,7 @@ type Server struct {
 	BodyLimit    int           `mapstructure:"bodyLimit" validate:"required"`
 	Timeout      time.Duration `mapstructure:"timeout" validate:"required"`
 	JWTSecretKey string        `mapstructure:"jwtSecretKey" validate:"required"`
+	JWTExpiry    time.Duration `mapstructure:"jwtExpiry"`
 	APIKeys      APIKeyConfig  `mapstructure:"apiKeys"`
 	RateLimit    RateLimit     `mapstructure:"rateLimit"`
 }
@@ -37,6 +38,7 @@ type RateLimit struct {
 }
 
 type Database struct {
+	Driver   string `mapstructure:"driver" validate:"omitempty,oneof=postgres mysql"`
 	Host     string `mapstructure:"host" validate:"required"`
 	Port     int    `mapstructure:"port" validate:"required"`
 	User     string `mapstructure:"user" validate:"required"`

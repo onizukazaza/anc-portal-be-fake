@@ -3,6 +3,7 @@ package cmi
 import (
 	"github.com/gofiber/fiber/v2"
 
+	"github.com/onizukazaza/anc-portal-be-fake/internal/database"
 	cmihttp "github.com/onizukazaza/anc-portal-be-fake/internal/modules/cmi/adapters/http"
 	cmipg "github.com/onizukazaza/anc-portal-be-fake/internal/modules/cmi/adapters/postgres"
 	"github.com/onizukazaza/anc-portal-be-fake/internal/modules/cmi/app"
@@ -11,10 +12,15 @@ import (
 
 // Register wires CMI module dependencies and mounts routes.
 func Register(router fiber.Router, deps module.Deps) {
-	// ดึง pool จาก external database ชื่อ "meprakun"
-	pool, err := deps.DB.External("meprakun")
+	// ดึง connection จาก external database ชื่อ "meprakun"
+	conn, err := deps.DB.External("meprakun")
 	if err != nil {
 		// ถ้าไม่มี external DB "meprakun" ก็ข้ามไป
+		return
+	}
+
+	pool, err := database.PgxPool(conn)
+	if err != nil {
 		return
 	}
 
@@ -23,5 +29,5 @@ func Register(router fiber.Router, deps module.Deps) {
 	controller := cmihttp.NewCMIController(service)
 
 	group := router.Group("/cmi")
-	group.Get("/:job_id/request-policy-single-cmi", controller.GetPolicyByJobID)
+	group.Get("/:job_id/request-policy-single-cmi", deps.Middleware.JWTAuth, controller.GetPolicyByJobID)
 }

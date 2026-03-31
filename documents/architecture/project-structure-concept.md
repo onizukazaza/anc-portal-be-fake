@@ -1,9 +1,9 @@
 # ANC Portal BE — Project Structure
 
-> **Status:** Architecture Design v1.1  
+> **Status:** Architecture Design v1.2  
 > **Pattern:** Modular Monolith + Hexagonal Architecture (Ports & Adapters)  
 > **Language:** Go 1.25 · Fiber v2 · pgx v5  
-> **Last Updated:** 2026-03-30
+> **Last Updated:** 2026-03-31
 
 ---
 
@@ -51,7 +51,7 @@
 │  │  └────────┘  └────────┘  └────────────┘         │   │
 │  ├──────────────────────────────────────────────────┤   │
 │  │  shared/ (dto, enum, pagination, utils, module)  │   │
-│  │  database/ (postgres provider + migrations)      │   │
+│  │  database/ (multi-driver: postgres + mysql)       │   │
 │  │  sync/ (data synchronization)                    │   │
 │  │  import/ (CSV data import)                       │   │
 │  │  testkit/ (test assertion library)               │   │
@@ -99,9 +99,9 @@
         └──────┬──────┘ └────┬─────┘ └──────┬───────┘
                │             │              │
         ┌──────▼─────────────▼──────────────▼───────┐
-        │            PostgreSQL (pgx v5)             │
-        │  main DB (anc-portal)                      │
-        │  external DB (meprakun) ← read-only        │
+        │     Database Layer (Multi-Driver)          │
+        │  main DB (anc-portal) ← postgres           │
+        │  external DB (meprakun) ← postgres/mysql   │
         └────────────────────────────────────────────┘
                │              │             │
         ┌──────▼──┐    ┌─────▼────┐  ┌─────▼─────┐
@@ -150,6 +150,8 @@ anc-portal-be/
 │   ├── server.go                      #   Fiber app: middlewares, routes, module registration
 │   ├── server_test.go                 #   health/ready/kafka endpoint tests
 │   └── middleware/                     #   Custom Fiber middlewares
+│       ├── auth.go                    #     JWT Bearer + API Key middleware (per-endpoint)
+│       ├── auth_test.go               #     JWT + API Key middleware tests
 │       ├── access_log.go              #     Structured request logging (zerolog)
 │       └── access_log_test.go          #     access log middleware tests
 │
@@ -248,7 +250,7 @@ anc-portal-be/
 │   ├── shared/                        # ── Shared Internal Packages ──
 │   │   ├── dto/
 │   │   │   ├── response.go            #   ApiResponse, ErrorResponse, ErrorResult, helpers
-│   │   │   └── error_codes.go         #   Error Code Catalog — 15 TraceId constants (5 modules)
+│   │   │   └── error_codes.go         #   Error Code Catalog — 17 TraceId constants (5 modules + auth middleware)
 │   │   ├── enum/
 │   │   │   ├── health.go              #   HealthOK, HealthNotReady
 │   │   │   ├── response.go            #   StatusSuccess, StatusFail
@@ -274,13 +276,16 @@ anc-portal-be/
 │   │       ├── slice.go              #   Contains[T], Unique[T], Map[A,B], Filter[T]
 │   │       └── string.go             #   Truncate
 │   │
-│   ├── database/                      # ── Database Layer ──
+│   ├── database/                      # ── Database Layer (Multi-Driver) ──
 │   │   ├── provider.go                #   Provider interface (Main, External, Read, Write)
+│   │   ├── conn.go                    #   ExternalConn interface + type-safe helpers (PgxPool, SQLDB)
+│   │   ├── manager.go                 #   Manager — multi-DB lifecycle (main + externals)
 │   │   ├── postgres/
-│   │   │   ├── connect.go             #   NewWithConfig — DSN build, pool tuning, OTel
+│   │   │   ├── connect.go             #   PostgreSQL connector — DSN build, pool tuning, OTel
 │   │   │   ├── connect_test.go        #   MaskDSN tests
-│   │   │   ├── manager.go             #   Manager — multi-DB lifecycle (main + externals)
 │   │   │   └── migrate.go             #   MigrateUp/Down/Steps/Force/Version
+│   │   ├── mysql/
+│   │   │   └── connect.go             #   MySQL connector — TLS, pool tuning, MultiStatements=false
 │   │   └── seed/
 │   │       ├── runner.go              #   Seed dispatcher
 │   │       ├── auth_user_seed.go      #   User seed with bcrypt
@@ -379,10 +384,12 @@ anc-portal-be/
 │   ├── deployment-guide.md
 │   ├── architecture/
 │   │   ├── README.md                  #   architecture overview
-│   │   ├── project-structure.md       #   ← this file
+│   │   ├── project-structure-concept.md  #   ← this file
+│   │   ├── database-concept.md        #   Internal & External DB concept
+│   │   ├── kafka-concept.md           #   Kafka event-driven architecture concept
 │   │   ├── gaps-and-todos.md          #   gap analysis + todo tracking
 │   │   ├── microservice-readiness.md  #   microservice extraction guide
-│   │   └── swagger-overview.md        #   Swagger/OpenAPI guide + Error Code Catalog
+│   │   └── swagger-concept.md         #   Swagger/OpenAPI guide + Error Code Catalog
 │   ├── cicd/
 │   │   ├── ci-cd-guide.md             #   CI/CD pipeline guide
 │   │   └── ci-cd-pipeline-explained.md #   CI/CD อธิบายทุกส่วน (Lint/Test/Vuln/Build)
@@ -503,9 +510,9 @@ module/
 
 | Package | Purpose |
 | ------- | ------- |
-| `dto` | API response envelope (`ApiResponse`, `Success`, `Error`) |
+| `dto` | API response envelope (`ApiResponse`, `Success`, `Error`) + Error Code Catalog |
 | `enum` | String constants (roles, stages, health status) |
-| `module` | `Deps` struct — shared dependency injection container |
+| `module` | `Deps` struct + `Middleware` (JWTAuth, APIKeyAuth) — shared DI container |
 | `pagination` | Generic `Response[T]`, SQL-safe query builder |
 | `validator` | Request body validation (`BindAndValidate`, go-playground/validator) |
 | `utils` | Generics: `Ptr[T]`, `Contains[T]`, `NewID()`, `MaskJSON()` |
@@ -553,7 +560,7 @@ deployments/
 │  2. svc  := app.NewService(repo)                         │
 │  3. ctrl := http.NewXxxController(svc)                   │
 │  4. group := router.Group("/xxx")                        │
-│  5. group.GET("/...", ctrl.FindByID)                     │
+│  5. group.GET("/...", deps.Middleware.JWTAuth, ctrl.Find) │
 └──────────────────────┬───────────────────────────────────┘
                        │
      ┌─────────────────┼─────────────────┐
@@ -632,11 +639,12 @@ deployments/
 | **`module.Deps` struct** | Dependency Injection แบบง่าย — ไม่ต้องใช้ DI framework |
 | **`pkg/` vs `internal/`** | `pkg/` คือ library ที่ reuse ได้ข้าม project, `internal/` คือ business logic เฉพาะ |
 | **Kustomize overlays** | Config per-environment โดยไม่ต้อง duplicate manifests |
-| **pgx v5 + pgxpool** | Connection pooling, prepared statements, OTel tracing built-in |
+| **Multi-Driver DB** | postgres (pgx v5) + mysql (go-sql-driver) — driver-agnostic `ExternalConn` interface |
 | **Otter + Redis hybrid** | L1 (in-memory, microsecond) → L2 (Redis, millisecond) → DB (source of truth) |
 | **Kafka with DLQ** | At-least-once delivery + Dead Letter Queue สำหรับ failed events |
 | **OTel (not Datadog/NR)** | Vendor-neutral, W3C standard, works with Grafana/Jaeger/Tempo |
 | **golangci-lint 17 linters** | gosec, bodyclose, noctx, sqlclosecheck — catch issues before PR |
+| **Route-Level Auth** | JWT + API Key middleware applied per-endpoint via `Deps.Middleware` — ไม่ใช้ global auth |
 | **`internal/testkit/`** | Zero-dependency assertion library — ไม่ต้อง import testify |
 
 ---

@@ -4,13 +4,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/go-playground/validator/v10"
 	"github.com/joho/godotenv"
 	"github.com/mitchellh/mapstructure"
+	"github.com/onizukazaza/anc-portal-be-fake/internal/shared/validator"
 	"github.com/spf13/viper"
 )
-
-var validate = validator.New(validator.WithRequiredStructEnabled())
 
 func Load() (*Config, error) {
 	_ = godotenv.Load()
@@ -51,13 +49,13 @@ func Load() (*Config, error) {
 	}
 	cfg.ExternalDBs = externalDBs
 
-	if err := validate.Struct(cfg); err != nil {
+	if err := validator.Get().Struct(cfg); err != nil {
 		return nil, fmt.Errorf("config validation error: %w", err)
 	}
 
 	for name := range cfg.ExternalDBs {
 		db := cfg.ExternalDBs[name]
-		if err := validate.Struct(db); err != nil {
+		if err := validator.Get().Struct(db); err != nil {
 			return nil, fmt.Errorf("external db [%s] invalid: %w", name, err)
 		}
 	}
@@ -76,6 +74,7 @@ func bindEnvs(v *viper.Viper) {
 	_ = v.BindEnv("server.bodyLimit", "SERVER_BODY_LIMIT")
 	_ = v.BindEnv("server.timeout", "SERVER_TIMEOUT")
 	_ = v.BindEnv("server.jwtSecretKey", "SERVER_JWT_SECRET_KEY")
+	_ = v.BindEnv("server.jwtExpiry", "SERVER_JWT_EXPIRY")
 
 	_ = v.BindEnv("server.apiKeys.internal", "SERVER_APIKEYS_INTERNAL")
 	_ = v.BindEnv("server.apiKeys.partner", "SERVER_APIKEYS_PARTNER")
@@ -139,6 +138,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("server.port", 3000)
 	v.SetDefault("server.bodyLimit", 4*1024*1024)
 	v.SetDefault("server.timeout", "5s")
+	v.SetDefault("server.jwtExpiry", "24h")
 	v.SetDefault("server.rateLimit.enabled", false)
 	v.SetDefault("server.rateLimit.max", 100)
 	v.SetDefault("server.rateLimit.expiration", "1m")

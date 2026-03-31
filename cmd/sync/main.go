@@ -23,7 +23,7 @@ import (
 	"github.com/joho/godotenv"
 
 	"github.com/onizukazaza/anc-portal-be-fake/config"
-	"github.com/onizukazaza/anc-portal-be-fake/internal/database/postgres"
+	"github.com/onizukazaza/anc-portal-be-fake/internal/database"
 	datasync "github.com/onizukazaza/anc-portal-be-fake/internal/sync"
 	"github.com/onizukazaza/anc-portal-be-fake/pkg/banner"
 	"github.com/onizukazaza/anc-portal-be-fake/pkg/log"
@@ -59,7 +59,7 @@ func main() {
 	defer cancel()
 
 	// >> Connect database manager (main + external)
-	dbManager, err := postgres.NewManager(ctx, cfg)
+	dbManager, err := database.NewManager(ctx, cfg)
 	if err != nil {
 		log.L().Fatal().Err(err).Msg("database connection failed")
 	}
@@ -121,11 +121,16 @@ func main() {
 
 // registerSyncers ลงทะเบียน syncer ทั้งหมด.
 // เพิ่มตารางใหม่: สร้างไฟล์ใน internal/sync/ + register ที่นี่.
-func registerSyncers(registry *datasync.Registry, db *postgres.Manager, cfg *config.Config) {
+func registerSyncers(registry *datasync.Registry, db *database.Manager, cfg *config.Config) {
 	// quotations: source = meprakun (external), dest = main DB
-	if pool, err := db.External("meprakun"); err == nil {
-		registry.Register(datasync.NewQuotationSyncer(pool, db.Main()))
-		log.L().Info().Msg("registered syncer: quotations (meprakun → main)")
+	if conn, err := db.External("meprakun"); err == nil {
+		pool, pgErr := database.PgxPool(conn)
+		if pgErr != nil {
+			log.L().Warn().Err(pgErr).Msg("skip quotation syncer: meprakun is not postgres")
+		} else {
+			registry.Register(datasync.NewQuotationSyncer(pool, db.Main()))
+			log.L().Info().Msg("registered syncer: quotations (meprakun → main)")
+		}
 	} else {
 		log.L().Warn().Err(err).Msg("skip quotation syncer: external DB 'meprakun' not available")
 	}

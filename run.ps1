@@ -231,14 +231,32 @@ switch ($Command) {
 
             # Failure details field (only when failed)
             $failureField = ""
+            $locationField = ""
             if ($failed -and $failureDetails) {
                 # Escape JSON special chars in failure details
                 $escapedDetails = $failureDetails -replace '\\', '\\\\' -replace '"', '\"' -replace "`r`n", '\n' -replace "`n", '\n' -replace "`t", '  '
                 $failureField = ",{`"name`":`"\u26a0 Failure Details`",`"value`":`"``````\n${escapedDetails}\n```````",`"inline`":false}"
+
+                # Extract error locations (file:line:col) from raw output
+                $locMatches = [regex]::Matches($failureDetails, '(?m)([a-zA-Z0-9_\-\\\/\.]+\.go:\d+(?::\d+)?)')
+                $locations = @()
+                foreach ($m in $locMatches) {
+                    $loc = $m.Value -replace '\\', '/'
+                    if ($locations -notcontains $loc) { $locations += $loc }
+                }
+                if ($locations.Count -gt 0) {
+                    # Limit to 10 locations to avoid embed overflow
+                    $shownLocs = $locations | Select-Object -First 10
+                    $locLines = ($shownLocs | ForEach-Object { "``$_``" }) -join '\n'
+                    if ($locations.Count -gt 10) { $locLines += "\n... +$($locations.Count - 10) more" }
+                    $locationField = ",{`"name`":`"\ud83d\udccd Error Locations`",`"value`":`"${locLines}`",`"inline`":false}"
+                } else {
+                    $locationField = ",{`"name`":`"\ud83d\udccd Error Locations`",`"value`":`"\u0e0a\u0e35\u0e49\u0e08\u0e38\u0e14\u0e44\u0e21\u0e48\u0e44\u0e14\u0e49 \u2014 \u0e14\u0e39 Failure Details \u0e14\u0e49\u0e32\u0e19\u0e1a\u0e19`",`"inline`":false}"
+                }
             }
 
             $payload = @"
-{"embeds":[{"title":"$titleEmoji $title","color":$color,"fields":[{"name":"Branch","value":"``$branch``","inline":true},{"name":"Commit","value":"``$sha``","inline":true},{"name":"Machine","value":"${username}@${hostname}","inline":true},{"name":"Message","value":"$commitMsg","inline":false},{"name":"Jobs","value":"$jobsText","inline":false},{"name":"Total Time","value":"${totalSec}s","inline":true}${failureField}],"footer":{"text":"ANC Portal CI (Local)"},"timestamp":"$ts"}]}
+{"embeds":[{"title":"$titleEmoji $title","color":$color,"fields":[{"name":"Branch","value":"``$branch``","inline":true},{"name":"Commit","value":"``$sha``","inline":true},{"name":"Machine","value":"${username}@${hostname}","inline":true},{"name":"Message","value":"$commitMsg","inline":false},{"name":"Jobs","value":"$jobsText","inline":false},{"name":"Total Time","value":"${totalSec}s","inline":true}${failureField}${locationField}],"footer":{"text":"ANC Portal CI (Local)"},"timestamp":"$ts"}]}
 "@
             # Send as UTF-8
             $utf8 = [System.Text.Encoding]::UTF8.GetBytes($payload)

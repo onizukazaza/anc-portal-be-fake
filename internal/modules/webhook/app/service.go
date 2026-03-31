@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	appOtel "github.com/onizukazaza/anc-portal-be-fake/pkg/otel"
@@ -27,11 +28,18 @@ var (
 type Service struct {
 	secret   string // GitHub webhook secret for HMAC verification
 	notifier ports.Notifier
+	wg       sync.WaitGroup // tracks in-flight notification goroutines
 }
 
 // NewService creates a webhook service.
 func NewService(secret string, notifier ports.Notifier) *Service {
 	return &Service{secret: secret, notifier: notifier}
+}
+
+// Wait blocks until all pending notification goroutines have completed.
+// Call during graceful shutdown to avoid losing in-flight notifications.
+func (s *Service) Wait() {
+	s.wg.Wait()
 }
 
 // HandlePush processes a GitHub push event.
@@ -60,7 +68,9 @@ func (s *Service) HandlePush(ctx context.Context, rawBody []byte, signatureHeade
 
 	// Send notification asynchronously — don't block GitHub's response.
 	// GitHub has a 10s timeout; if Discord is slow, it would cause retries.
+	s.wg.Add(1)
 	go func() {
+		defer s.wg.Done()
 		defer func() {
 			if r := recover(); r != nil {
 				log.L().Error().Interface("panic", r).Msg("panic in push notification goroutine")

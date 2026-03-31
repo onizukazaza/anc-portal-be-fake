@@ -1,6 +1,6 @@
 # Swagger (OpenAPI) — คู่มือการใช้งาน
 
-> **v2.1** — Last updated: March 2026
+> **v2.2** — Last updated: March 2026
 >
 > Swagger สร้าง API documentation อัตโนมัติจาก code annotation
 > พร้อม UI สำหรับทดสอบ API ได้ทันที
@@ -157,6 +157,10 @@ Trace ID ทั้งหมดอยู่ใน `internal/shared/dto/error_code
 | Auth | `auth-bind-failed` | 10001 | request body ไม่ถูกต้อง |
 | Auth | `auth-invalid-creds` | 10002 | username/password ไม่ถูกต้อง |
 | Auth | `auth-internal-error` | 10003 | เกิดข้อผิดพลาดภายใน |
+| Auth | `auth-token-missing` | 10004 | ไม่มี Authorization header หรือ token ว่าง |
+| Auth | `auth-token-invalid` | 10005 | token ไม่ถูกต้องหรือหมดอายุ |
+| Auth | `auth-apikey-missing` | 10006 | ไม่มี X-API-Key header |
+| Auth | `auth-apikey-invalid` | 10007 | API key ไม่ถูกต้อง |
 | Quotation | `qt-id-required` | 11001 | ไม่ได้ส่ง quotation id |
 | Quotation | `qt-not-found` | 11002 | ไม่พบ quotation |
 | Quotation | `qt-internal-error` | 11003 | เกิดข้อผิดพลาดภายใน |
@@ -185,4 +189,4 @@ Trace ID ทั้งหมดอยู่ใน `internal/shared/dto/error_code
 
 ---
 
-> **v2.1** — March 2026 | ANC Portal Backend Team
+> **v2.2** — March 2026 | ANC Portal Backend Team

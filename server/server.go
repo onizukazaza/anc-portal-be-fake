@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -25,6 +26,7 @@ import (
 	"github.com/onizukazaza/anc-portal-be-fake/internal/shared/dto"
 	"github.com/onizukazaza/anc-portal-be-fake/internal/shared/enum"
 	module "github.com/onizukazaza/anc-portal-be-fake/internal/shared/module"
+	"github.com/onizukazaza/anc-portal-be-fake/internal/shared/validator"
 	"github.com/onizukazaza/anc-portal-be-fake/pkg/cache"
 	"github.com/onizukazaza/anc-portal-be-fake/pkg/kafka"
 	"github.com/onizukazaza/anc-portal-be-fake/pkg/localcache"
@@ -44,6 +46,7 @@ type Server struct {
 	hybridCache   *localcache.Hybrid // L1 (otter) + L2 (Redis) — nil ถ้าไม่มีทั้งคู่
 	app           *fiber.App
 	kafkaProducer KafkaProducer
+	onShutdown    []func() // callbacks to run before server fully stops
 }
 
 const (
@@ -59,6 +62,7 @@ func New(cfg *config.Config, db database.Provider, producer KafkaProducer, cache
 		ReadTimeout:  cfg.Server.Timeout,
 		WriteTimeout: cfg.Server.Timeout,
 		BodyLimit:    cfg.Server.BodyLimit,
+		ErrorHandler: globalErrorHandler,
 	})
 
 	s := &Server{cfg: cfg, db: db, cache: cacheClient, localCache: lc, app: app, kafkaProducer: producer}
@@ -83,6 +87,11 @@ func (s *Server) Start(ctx context.Context) error {
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), defaultShutdownTimeout)
 		defer cancel()
 		_ = s.app.ShutdownWithContext(shutdownCtx)
+
+		// Wait for in-flight background work (e.g. webhook notifications)
+		for _, fn := range s.onShutdown {
+			fn()
+		}
 	}()
 
 	// >> Listen and serve
@@ -100,6 +109,23 @@ func (s *Server) Start(ctx context.Context) error {
 		}
 		return err
 	}
+}
+
+// checkDependencies verifies the database and cache (if configured) are reachable.
+// Used by both /healthz and /ready endpoints.
+func (s *Server) checkDependencies(parent context.Context) error {
+	ctx, cancel := context.WithTimeout(parent, healthTimeout)
+	defer cancel()
+
+	if err := s.db.HealthCheck(ctx); err != nil {
+		return err
+	}
+	if s.cache != nil {
+		if err := s.cache.Ping(ctx); err != nil {
+			return fmt.Errorf("redis: %w", err)
+		}
+	}
+	return nil
 }
 
 func (s *Server) initMiddlewares() {
@@ -171,28 +197,14 @@ func (s *Server) registerRoutes() {
 
 	// >> Health endpoint (includes database + redis health check)
 	s.app.Get("/healthz", func(c *fiber.Ctx) error {
-		healthCtx, cancel := context.WithTimeout(c.UserContext(), healthTimeout)
-		defer cancel()
-		if err := s.db.HealthCheck(healthCtx); err != nil {
+		if err := s.checkDependencies(c.UserContext()); err != nil {
 			return dto.Error(c, fiber.StatusServiceUnavailable, "degraded: "+err.Error())
-		}
-		if s.cache != nil {
-			if err := s.cache.Ping(healthCtx); err != nil {
-				return dto.Error(c, fiber.StatusServiceUnavailable, "degraded: redis: "+err.Error())
-			}
 		}
 		return dto.Success(c, fiber.StatusOK, fiber.Map{"status": enum.HealthOK})
 	})
 	s.app.Get("/ready", func(c *fiber.Ctx) error {
-		healthCtx, cancel := context.WithTimeout(c.UserContext(), healthTimeout)
-		defer cancel()
-		if err := s.db.HealthCheck(healthCtx); err != nil {
+		if err := s.checkDependencies(c.UserContext()); err != nil {
 			return dto.Error(c, fiber.StatusServiceUnavailable, enum.HealthNotReady+": "+err.Error())
-		}
-		if s.cache != nil {
-			if err := s.cache.Ping(healthCtx); err != nil {
-				return dto.Error(c, fiber.StatusServiceUnavailable, enum.HealthNotReady+": redis: "+err.Error())
-			}
 		}
 		return dto.Success(c, fiber.StatusOK, fiber.Map{
 			"status":    enum.HealthReady,
@@ -202,22 +214,36 @@ func (s *Server) registerRoutes() {
 
 	// >> Module routes
 	api := s.app.Group("/v1")
+
+	// ─── Auth strategies ─────────────────────────────────────────
+	tokenSigner := auth.NewTokenSigner(s.cfg)
+	jwtAuth := mw.Auth(mw.AuthConfig{TokenSigner: tokenSigner})
+	apiKeyAuth := mw.APIKey(mw.APIKeyConfig{ValidKeys: s.cfg.Server.APIKeys.Internal})
+
 	deps := module.Deps{
 		Config:      s.cfg,
 		DB:          s.db,
 		Cache:       s.cache,
 		LocalCache:  s.localCache,
 		HybridCache: s.hybridCache,
+		Middleware: module.Middleware{
+			JWTAuth:    jwtAuth,
+			APIKeyAuth: apiKeyAuth,
+		},
 	}
-	auth.Register(api, deps)
+
+	// ─── Module registration (each module applies auth internally) ─
+	auth.Register(api, deps, tokenSigner)
+	if wait := webhook.Register(api, deps); wait != nil {
+		s.onShutdown = append(s.onShutdown, wait)
+	}
 	externaldb.Register(api, deps)
 	quotation.Register(api, deps)
 	cmi.Register(api, deps)
-	webhook.Register(api, deps)
 
-	// >> Kafka test route for local stage
+	// >> Kafka test route for local stage (public, no auth)
 	if s.cfg.StageStatus == enum.StageLocal && s.kafkaProducer != nil {
-		s.app.Post("/v1/kafka/publish", s.publishKafka)
+		api.Post("/kafka/publish", s.publishKafka)
 	}
 }
 
@@ -254,4 +280,26 @@ func (s *Server) publishKafka(c *fiber.Ctx) error {
 	}
 
 	return dto.SuccessWithMessage(c, fiber.StatusAccepted, "published", nil)
+}
+
+// globalErrorHandler is the Fiber-level error handler for all unhandled errors.
+//   - ErrValidation: response was already written by BindAndValidate — do nothing.
+//   - *fiber.Error:  use the status code from the error.
+//   - other errors:  respond with 500 Internal Server Error.
+func globalErrorHandler(c *fiber.Ctx, err error) error {
+	if errors.Is(err, validator.ErrValidation) {
+		return nil // response already written
+	}
+
+	code := fiber.StatusInternalServerError
+	var fe *fiber.Error
+	if errors.As(err, &fe) {
+		code = fe.Code
+	}
+
+	return c.Status(code).JSON(dto.ApiResponse{
+		Status:     enum.ResponseError,
+		StatusCode: code,
+		Message:    err.Error(),
+	})
 }

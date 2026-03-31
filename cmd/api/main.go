@@ -24,6 +24,8 @@
 // @description | Auth | auth-bind-failed | 10001 | 400 | request body ไม่ถูกต้อง |
 // @description | Auth | auth-invalid-creds | 10002 | 401 | username/password ไม่ถูกต้อง |
 // @description | Auth | auth-internal-error | 10003 | 500 | เกิดข้อผิดพลาดภายใน auth service |
+// @description | Auth | auth-token-missing | 10004 | 401 | ไม่มี Authorization header หรือ token ว่าง |
+// @description | Auth | auth-token-invalid | 10005 | 401 | token ไม่ถูกต้องหรือหมดอายุ |
 // @description | Quotation | qt-id-required | 11001 | 400 | ไม่ได้ส่ง quotation id |
 // @description | Quotation | qt-not-found | 11002 | 404 | ไม่พบ quotation |
 // @description | Quotation | qt-internal-error | 11003 | 500 | เกิดข้อผิดพลาดภายใน quotation service |
@@ -62,6 +64,7 @@ import (
 
 	"github.com/onizukazaza/anc-portal-be-fake/config"
 	"github.com/onizukazaza/anc-portal-be-fake/docs" // >> swagger generated docs
+	"github.com/onizukazaza/anc-portal-be-fake/internal/database"
 	"github.com/onizukazaza/anc-portal-be-fake/internal/database/postgres"
 	"github.com/onizukazaza/anc-portal-be-fake/pkg/banner"
 	"github.com/onizukazaza/anc-portal-be-fake/pkg/buildinfo"
@@ -123,7 +126,7 @@ func main() {
 	defer otelShutdown(ctx)
 
 	// >> Connect database manager (main + external)
-	dbManager, err := postgres.NewManager(ctx, cfg)
+	dbManager, err := database.NewManager(ctx, cfg)
 	if err != nil {
 		appLogger.Fatal().Err(err).Msg("database connection failed")
 	}

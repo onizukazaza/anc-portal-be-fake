@@ -44,20 +44,21 @@ func (s *Service) check(ctx context.Context, name string) domain.DBStatus {
 	ctx, span := appOtel.Tracer(appOtel.TracerExtDBService).Start(ctx, "check")
 	defer span.End()
 
-	pool, err := s.db.External(name)
+	conn, err := s.db.External(name)
 	if err != nil {
 		return domain.DBStatus{Name: name, Status: enum.DBError, Error: err.Error()}
 	}
 
-	var currentDB, version string
-	if err := pool.QueryRow(ctx, "SELECT current_database(), version()").Scan(&currentDB, &version); err != nil {
-		return domain.DBStatus{Name: name, Status: enum.DBUnhealthy, Error: err.Error()}
+	dbName, version, err := conn.Diagnostic(ctx)
+	if err != nil {
+		return domain.DBStatus{Name: name, Driver: conn.Driver(), Status: enum.DBUnhealthy, Error: err.Error()}
 	}
 
 	return domain.DBStatus{
 		Name:            name,
+		Driver:          conn.Driver(),
 		Status:          enum.DBHealthy,
-		CurrentDatabase: currentDB,
+		CurrentDatabase: dbName,
 		Version:         version,
 	}
 }

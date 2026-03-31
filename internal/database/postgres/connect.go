@@ -24,9 +24,7 @@ type DB struct {
 	pool *pgxpool.Pool
 }
 
-// ======================================================
-// Generic Constructor (main + external)
-// ======================================================
+// >> Constructor (main + external)
 func NewWithConfig(ctx context.Context, dbCfg config.Database, otelEnabled bool) (*DB, error) {
 	pgxConfig, err := pgxpool.ParseConfig(buildDSN(dbCfg))
 	if err != nil {
@@ -50,9 +48,8 @@ func NewWithConfig(ctx context.Context, dbCfg config.Database, otelEnabled bool)
 	return &DB{pool: pool}, nil
 }
 
-// ======================================================
-// Public Methods
-// ======================================================
+// >> Public Methods
+
 func (db *DB) Pool() *pgxpool.Pool {
 	return db.pool
 }
@@ -69,9 +66,20 @@ func (db *DB) Health(ctx context.Context) error {
 	return db.pool.Ping(ctx)
 }
 
-// ======================================================
-// Internal Helpers
-// ======================================================
+// >> Driver returns "postgres".
+func (db *DB) Driver() string { return "postgres" }
+
+// >> Diagnostic returns the current database name and PostgreSQL server version.
+func (db *DB) Diagnostic(ctx context.Context) (string, string, error) {
+	var dbName, version string
+	if err := db.pool.QueryRow(ctx, "SELECT current_database(), version()").Scan(&dbName, &version); err != nil {
+		return "", "", err
+	}
+	return dbName, version, nil
+}
+
+// >> Internal Helpers
+
 func buildDSN(dbCfg config.Database) string {
 	u := &url.URL{
 		Scheme: "postgres",
@@ -87,9 +95,7 @@ func buildDSN(dbCfg config.Database) string {
 	return u.String()
 }
 
-// MaskDSN masks the password in a PostgreSQL DSN for safe logging.
-// e.g. "postgres://user:secret@host/db" → "postgres://user:****@host/db"
-// Handles edge cases: colons in password, percent-encoded chars, no password, etc.
+// >> MaskDSN masks the password in a PostgreSQL DSN for safe logging.
 func MaskDSN(dsn string) string {
 	u, err := url.Parse(dsn)
 	if err != nil || u.User == nil {

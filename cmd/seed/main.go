@@ -14,7 +14,7 @@ import (
 	"github.com/joho/godotenv"
 
 	"github.com/onizukazaza/anc-portal-be-fake/config"
-	"github.com/onizukazaza/anc-portal-be-fake/internal/database/postgres"
+	"github.com/onizukazaza/anc-portal-be-fake/internal/database"
 	"github.com/onizukazaza/anc-portal-be-fake/internal/database/seed"
 	"github.com/onizukazaza/anc-portal-be-fake/pkg/banner"
 	"github.com/onizukazaza/anc-portal-be-fake/pkg/log"
@@ -48,7 +48,7 @@ func main() {
 	ctx := context.Background()
 
 	// >> Connect database manager (main + external)
-	dbManager, err := postgres.NewManager(ctx, cfg)
+	dbManager, err := database.NewManager(ctx, cfg)
 	if err != nil {
 		log.L().Fatal().Err(err).Msg("database connection failed")
 	}

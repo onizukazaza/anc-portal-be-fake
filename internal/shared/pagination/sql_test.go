@@ -138,7 +138,7 @@ func TestDataSQLWithSearch(t *testing.T) {
 	req := Request{Page: 1, Limit: 10, Order: "desc", Search: "hello"}
 	got := From("quotations").
 		Select("id", "doc_no").
-		Where("customer_id = $1").
+		Where("customer_id = $1", 1).
 		Search("doc_no", "status").
 		Paginate(req, "created_at", testAllowed).
 		DataSQL()

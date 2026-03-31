@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/onizukazaza/anc-portal-be-fake/config"
+	"github.com/onizukazaza/anc-portal-be-fake/internal/database"
 	"github.com/onizukazaza/anc-portal-be-fake/internal/testkit"
 	"github.com/onizukazaza/anc-portal-be-fake/pkg/kafka"
 )
@@ -26,7 +27,7 @@ func (m *mockDBProvider) Main() *pgxpool.Pool {
 	return nil
 }
 
-func (m *mockDBProvider) External(_ string) (*pgxpool.Pool, error) {
+func (m *mockDBProvider) External(_ string) (database.ExternalConn, error) {
 	return nil, nil
 }
 
@@ -69,6 +70,7 @@ func testConfig(stage string) *config.Config {
 			BodyLimit:    1024 * 1024,
 			Timeout:      2 * time.Second,
 			JWTSecretKey: "test-secret",
+			JWTExpiry:    24 * time.Hour,
 		},
 		Swagger: config.Swagger{Enabled: false},
 	}

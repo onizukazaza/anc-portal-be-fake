@@ -6,16 +6,22 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// Provider defines database access points used by application modules.
+// >> Provider — database access contract for application modules.
+// Modules depend on this interface, never on concrete Manager.
 type Provider interface {
-	// main external
+	// >> Main pool (always postgres)
 	Main() *pgxpool.Pool
 
-	// external รับชื่อฐานข้อมูลภายนอก → คืน pgxpool หรือ error ถ้าไม่พบหรือมีปัญหา
-	External(name string) (*pgxpool.Pool, error)
+	// >> External database connection by name.
+	// Returns ExternalConn that may wrap *pgxpool.Pool (postgres) or *sql.DB (mysql).
+	// Use database.PgxPool() or database.SQLDB() helpers for type-safe access.
+	External(name string) (ExternalConn, error)
 
+	// >> Read / Write pools (currently same as Main)
 	Read() *pgxpool.Pool
 	Write() *pgxpool.Pool
+
+	// >> Health check and cleanup
 	HealthCheck(ctx context.Context) error
 	Close()
 }

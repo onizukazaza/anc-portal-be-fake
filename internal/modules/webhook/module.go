@@ -12,16 +12,18 @@ import (
 )
 
 // Register wires webhook module dependencies and mounts routes.
-func Register(router fiber.Router, deps module.Deps) {
+// Returns a WaitFunc that blocks until all in-flight notifications have completed.
+// The caller should invoke it during graceful shutdown. Returns nil if the module is disabled.
+func Register(router fiber.Router, deps module.Deps) (wait func()) {
 	cfg := deps.Config.Webhook
 	if !cfg.Enabled {
 		log.L().Info().Msg("webhook module disabled")
-		return
+		return nil
 	}
 
 	if cfg.DiscordWebhookURL == "" {
 		log.L().Warn().Msg("webhook module enabled but DISCORD_WEBHOOK_URL is empty — skipping")
-		return
+		return nil
 	}
 
 	discordClient := pkgdiscord.NewClient(cfg.DiscordWebhookURL)
@@ -31,4 +33,6 @@ func Register(router fiber.Router, deps module.Deps) {
 
 	group := router.Group("/webhooks")
 	group.Post("/github", controller.HandleGitHubPush)
+
+	return service.Wait
 }

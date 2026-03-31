@@ -5,8 +5,8 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/onizukazaza/anc-portal-be-fake/internal/database"
 	"github.com/onizukazaza/anc-portal-be-fake/internal/shared/enum"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // ─── CheckAll ───
@@ -27,7 +27,7 @@ func TestCheckAll(t *testing.T) {
 		},
 		{
 			name:       "pool not found returns error status",
-			provider:   &fakeDBProvider{pools: map[string]*pgxpool.Pool{}},
+			provider:   &fakeDBProvider{conns: map[string]database.ExternalConn{}},
 			dbNames:    []string{"db1", "db2"},
 			wantLen:    2,
 			wantStatus: enum.DBError,
@@ -72,7 +72,7 @@ func TestCheckByName(t *testing.T) {
 		},
 		{
 			name:       "unknown db",
-			provider:   &fakeDBProvider{pools: map[string]*pgxpool.Pool{}},
+			provider:   &fakeDBProvider{conns: map[string]database.ExternalConn{}},
 			dbNames:    []string{},
 			checkName:  "unknown_db",
 			wantStatus: enum.DBError,

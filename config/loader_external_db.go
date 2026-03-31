@@ -21,6 +21,7 @@ func loadExternalDBs(v *viper.Viper) (map[string]Database, error) {
 		prefix := "EXTERNAL_DBS_" + strings.ToUpper(name) + "_"
 
 		db := Database{
+			Driver:           v.GetString(prefix + "DRIVER"),
 			Host:             v.GetString(prefix + "HOST"),
 			Port:             v.GetInt(prefix + "PORT"),
 			User:             v.GetString(prefix + "USER"),

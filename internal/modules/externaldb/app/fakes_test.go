@@ -4,25 +4,25 @@ import (
 	"context"
 	"errors"
 
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/onizukazaza/anc-portal-be-fake/internal/database"
 )
 
 // ─── Fake DBProvider ───
 
 type fakeDBProvider struct {
-	pools map[string]*pgxpool.Pool
+	conns map[string]database.ExternalConn
 	err   error
 }
 
-func (f *fakeDBProvider) External(name string) (*pgxpool.Pool, error) {
+func (f *fakeDBProvider) External(name string) (database.ExternalConn, error) {
 	if f.err != nil {
 		return nil, f.err
 	}
-	pool, ok := f.pools[name]
+	conn, ok := f.conns[name]
 	if !ok {
 		return nil, errors.New("not found: " + name)
 	}
-	return pool, nil
+	return conn, nil
 }
 
 func (f *fakeDBProvider) HealthCheck(_ context.Context) error {
