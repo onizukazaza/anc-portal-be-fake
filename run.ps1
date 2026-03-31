@@ -18,6 +18,7 @@ switch ($Command) {
         Write-Host "    .\run.ps1 dev           Run API with hot-reload (air)"
         Write-Host "    .\run.ps1 build         Build API binary"
         Write-Host "    .\run.ps1 test          Run all tests"
+        Write-Host "    .\run.ps1 test-cover    Run tests with coverage report"
         Write-Host "    .\run.ps1 lint          Run golangci-lint"
         Write-Host "    .\run.ps1 ci            Run full CI pipeline (lint+test+vuln+build)"
         Write-Host "                             Set DISCORD_WEBHOOK_URL or .env.local to notify Discord" -ForegroundColor DarkGray
@@ -66,6 +67,45 @@ switch ($Command) {
     "test" {
         Write-Host "[test] Running all tests..." -ForegroundColor Green
         go test ./...
+    }
+    "test-cover" {
+        $threshold = 25  # ปัจจุบัน 28.9% → ตั้ง 25% แล้วค่อยเพิ่มทีละ 5%
+        Write-Host "[test-cover] Running tests with coverage (threshold: ${threshold}%)..." -ForegroundColor Green
+        Write-Host ""
+
+        go test -coverprofile coverage.out -covermode atomic ./...
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "  Tests FAILED" -ForegroundColor Red
+            exit 1
+        }
+
+        Write-Host ""
+        Write-Host "  Coverage by package:" -ForegroundColor Cyan
+        Write-Host "  --------------------" -ForegroundColor DarkGray
+        $coverOutput = go tool cover -func coverage.out
+        $coverOutput | ForEach-Object {
+            if ($_ -match 'total:') {
+                Write-Host "  $_" -ForegroundColor Yellow
+            } else {
+                Write-Host "  $_" -ForegroundColor DarkGray
+            }
+        }
+
+        # Extract total percentage
+        $totalLine = $coverOutput | Select-String 'total:'
+        if ($totalLine -match '([\d\.]+)%') {
+            $coverage = [double]$Matches[1]
+            Write-Host ""
+            if ($coverage -lt $threshold) {
+                Write-Host "  FAIL: coverage ${coverage}% is below threshold ${threshold}%" -ForegroundColor Red
+                exit 1
+            } else {
+                Write-Host "  PASS: coverage ${coverage}% meets threshold ${threshold}%" -ForegroundColor Green
+            }
+        }
+
+        Write-Host ""
+        Write-Host "  HTML report: go tool cover -html=coverage.out" -ForegroundColor DarkGray
     }
     "lint" {
         Write-Host "[lint] Running golangci-lint..." -ForegroundColor Green

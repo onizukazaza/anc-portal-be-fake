@@ -5,7 +5,7 @@
 # ดูคำสั่งทั้งหมด: make help
 # =============================================================================
 
-.PHONY: help dev build test lint ci migrate seed import worker \
+.PHONY: help dev build test test-cover lint ci migrate seed import worker \
         otel-up otel-down otel-down-v otel-logs otel-ps \
         local-up local-down local-down-v local-logs local-ps \
         docker-build docker-build-worker \
@@ -20,7 +20,9 @@ help: ## แสดงคำสั่งทั้งหมด
 	@echo "  Development:"
 	@echo "    make dev           Run API with hot-reload (air)"
 	@echo "    make build         Build API binary"
-	@echo "    make test          Run all tests"	@echo "    make lint          Run golangci-lint"
+	@echo "    make test          Run all tests"
+	@echo "    make test-cover    Run tests with coverage report"
+	@echo "    make lint          Run golangci-lint"
 	@echo "    make ci            Run full CI pipeline locally (lint→test→vuln→build)"	@echo "    make tidy          go mod tidy"
 	@echo "    make clean         Remove build artifacts"
 	@echo ""
@@ -68,6 +70,23 @@ build: ## Build API binary
 
 test: ## Run all tests
 	go test ./...
+
+COVERAGE_THRESHOLD ?= 70
+test-cover: ## Run tests with coverage report (threshold: $(COVERAGE_THRESHOLD)%)
+	@echo ">> Running tests with coverage..."
+	@go test -coverprofile=coverage.out -covermode=atomic ./...
+	@echo ""
+	@echo ">> Coverage by package:"
+	@go tool cover -func=coverage.out
+	@echo ""
+	@TOTAL=$$(go tool cover -func=coverage.out | grep total | awk '{print $$NF}' | tr -d '%'); \
+	echo ">> Total coverage: $${TOTAL}%"; \
+	if [ $$(echo "$${TOTAL} < $(COVERAGE_THRESHOLD)" | bc -l) -eq 1 ]; then \
+		echo ">> FAIL: coverage $${TOTAL}% is below threshold $(COVERAGE_THRESHOLD)%"; \
+		exit 1; \
+	else \
+		echo ">> PASS: coverage $${TOTAL}% meets threshold $(COVERAGE_THRESHOLD)%"; \
+	fi
 
 lint: ## Run golangci-lint (ต้องติดตั้ง: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest)
 	golangci-lint run ./...
