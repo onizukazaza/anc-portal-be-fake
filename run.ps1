@@ -285,9 +285,25 @@ switch ($Command) {
                     if ($locations -notcontains $loc) { $locations += $loc }
                 }
                 if ($locations.Count -gt 0) {
+                    # Get GitHub repo URL for linking
+                    $repoUrl = git config --get remote.origin.url 2>$null
+                    if ($repoUrl) {
+                        $repoUrl = $repoUrl -replace '\.git$', ''
+                        $repoUrl = $repoUrl -replace 'git@github\.com:', 'https://github.com/'
+                    }
+
                     # Limit to 10 locations to avoid embed overflow
                     $shownLocs = $locations | Select-Object -First 10
-                    $locLines = ($shownLocs | ForEach-Object { "``$_``" }) -join '\n'
+                    $locLines = ($shownLocs | ForEach-Object {
+                        $fileLine = $_
+                        if ($repoUrl -and $fileLine -match '^(.+):(\d+)') {
+                            $fPath = $Matches[1]
+                            $lineNum = $Matches[2]
+                            "[$fileLine](${repoUrl}/blob/${branch}/${fPath}#L${lineNum})"
+                        } else {
+                            "``$fileLine``"
+                        }
+                    }) -join '\n'
                     if ($locations.Count -gt 10) { $locLines += "\n... +$($locations.Count - 10) more" }
                     $locationField = ",{`"name`":`"\ud83d\udccd Error Locations`",`"value`":`"${locLines}`",`"inline`":false}"
                 } else {
