@@ -59,6 +59,7 @@
 - [📖 Swagger — API Documentation](#-swagger--api-documentation)
 - [📊 Grafana — Observability Dashboard](#-grafana--observability-dashboard)
 - [🤖 Dependabot — Auto Dependency Updates](#-dependabot--auto-dependency-updates)
+- [🧪 Unit Test — Testing Strategy](#-unit-test--testing-strategy)
 - [🏗️ โครงสร้างโปรเจกต์](#️-โครงสร้างโปรเจกต์)
 - [🎯 Entry Points](#-entry-points)
 - [📚 เอกสาร](#-เอกสาร)
@@ -347,6 +348,74 @@ Config: [`.github/dependabot.yml`](.github/dependabot.yml)
 | Docker images | 3 / week | `dependencies`, `docker` |
 
 > 📝 รายละเอียด → [Dependabot Concept](documents/cicd/dependabot-concept.md)
+
+---
+
+## 🧪 Unit Test — Testing Strategy
+
+โปรเจกต์ใช้ **Go standard library `testing` + `internal/testkit`** ที่สร้างเอง — **ไม่มี external test dependency** (ไม่มี testify, gomock, mockery)
+
+```
+  ┌────────────────────────────────────────────────────────────────────┐
+  │                     Testing Architecture                           │
+  │                                                                    │
+  │   Handler Test          Service Test           Repo Test           │
+  │  ┌────────────┐       ┌────────────┐        ┌────────────┐        │
+  │  │ fakeRepo   │       │   Fakes    │        │  fakeRow   │        │
+  │  │ + Fiber    │──svc─▶│ (struct    │──port─▶│ (pgx.Row)  │        │
+  │  │ + httptest │       │  fields)   │        │            │        │
+  │  └─────┬──────┘       └─────┬──────┘        └─────┬──────┘        │
+  │        │                    │                     │                │
+  │   HTTP layer           Business logic        Scan / SQL logic     │
+  │   status code          domain rules          unmarshal JSON       │
+  │   response format      error handling        query fragments      │
+  │   trace_id             dependency calls                           │
+  └────────────────────────────────────────────────────────────────────┘
+```
+
+### สถิติ
+
+| Metric | Value |
+|--------|-------|
+| Test packages | 18 |
+| Test files | 25+ |
+| Fakes files | 6 |
+| External test deps | **0** |
+| testkit functions | 17 (11 assert + 6 must) |
+| Test layers | Service · Handler · Repository |
+
+### Test Patterns ที่ใช้
+
+| Pattern | ใช้ที่ | ตัวอย่าง |
+|---------|--------|---------|
+| **Table-Driven Tests** | ทุก layer | `[]struct{ name, want }` + `t.Run()` |
+| **Hand-Written Fakes** | Service · Handler | struct fields กำหนดค่า return |
+| **Closure-Based Mocks** | verify behavior | closure fields + call count |
+| **fakeRow (pgx.Row)** | Repository | จำลอง DB row สำหรับ scan test |
+| **setupApp + doRequest** | Handler | สร้าง Fiber app + httptest ทดสอบ HTTP |
+
+### testkit — Assertion Helpers
+
+`internal/testkit/` เป็น package ที่เขียนเองด้วย **Go Generics** ไม่มี external dependency
+
+```go
+testkit.Equal(t, got, want, "label")      // เทียบค่า
+testkit.NoError(t, err)                    // ไม่มี error
+testkit.ErrorIs(t, err, ErrNotFound)       // error ตรง target
+testkit.Contains(t, body, "success")       // string contains
+testkit.MustNoError(t, err, "setup")       // fatal ถ้า fail (ใช้ตอน setup)
+```
+
+### วิธีรัน
+
+```powershell
+.\run.ps1 test                                    # test ทั้งหมด
+go test ./internal/modules/auth/app/ -v -count=1  # เฉพาะ package
+go test ./... -race -count=1                       # พร้อม race detector
+go test ./... -coverprofile=coverage.out           # พร้อม coverage
+```
+
+> 📝 รายละเอียด → [Unit Test Guide](documents/testing/unit-test-guide.md) | [Cheatsheet](documents/testing/unit-test-cheatsheet.md)
 
 ---
 
