@@ -48,7 +48,7 @@
 // @description Input: Bearer {access_token}
 //
 // NOTE:
-// ค่าข้างบนใช้สำหรับ generate Swagger documentation (swag init) เท่านั้น
+// ค่าข้างบนใช้สำหรับ generate Swagger documentation (swag init) เท่านั้น !
 // ตอน runtime จะถูก override ด้วย environment configuration
 package main
 
