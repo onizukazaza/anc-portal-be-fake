@@ -1,0 +1,452 @@
+# =============================================================================
+# CI — Lint, Test, Build, Docker Push
+# =============================================================================
+# Trigger: push/PR ไป develop หรือ main
+# Flow:    lint ──┐
+#          test ──┼── build ── docker ── scan
+#                 │
+#          vuln ──┘
+# =============================================================================
+name: CI
+
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
+    branches: [develop, main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  GO_VERSION: "1.25"
+  REGISTRY: ghcr.io
+  API_IMAGE: ghcr.io/${{ github.repository }}
+  WORKER_IMAGE: ghcr.io/${{ github.repository }}-worker
+
+jobs:
+  # ───────────────────────────────────────────────────────────────────────────
+  # Job 1: Lint — golangci-lint (อ่าน .golangci.yml อัตโนมัติ)
+  # ───────────────────────────────────────────────────────────────────────────
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          args: --timeout=5m
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # Job 2: Test — unit tests + coverage
+  # ───────────────────────────────────────────────────────────────────────────
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Run tests
+        run: go test -race -coverprofile=coverage.out -covermode=atomic -count=1 ./...
+
+      - name: Coverage summary
+        run: |
+          go tool cover -func=coverage.out | tail -1
+          COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
+          echo "## Test Coverage: ${COVERAGE}%" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: coverage.out
+          retention-days: 14
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # Job 3: Vulnerability Check — govulncheck
+  # ───────────────────────────────────────────────────────────────────────────
+  vuln:
+    name: Vuln Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+
+      - name: Run govulncheck
+        run: govulncheck ./...
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # Job 4: Build — ตรวจว่า compile ผ่าน + ldflags ถูกต้อง
+  # ───────────────────────────────────────────────────────────────────────────
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: [lint, test, vuln]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Build all binaries
+        run: |
+          GIT_COMMIT=$(git rev-parse --short HEAD)
+          BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          LDFLAGS="-s -w \
+            -X github.com/onizukazaza/anc-portal-be-fake/pkg/buildinfo.GitCommit=${GIT_COMMIT} \
+            -X github.com/onizukazaza/anc-portal-be-fake/pkg/buildinfo.BuildTime=${BUILD_TIME}"
+
+          echo "Building with commit=${GIT_COMMIT} time=${BUILD_TIME}"
+
+          go build -ldflags="${LDFLAGS}" -o /dev/null ./cmd/api
+          go build -ldflags="${LDFLAGS}" -o /dev/null ./cmd/worker
+          go build -ldflags="-s -w"     -o /dev/null ./cmd/migrate
+          go build -ldflags="-s -w"     -o /dev/null ./cmd/seed
+          go build -ldflags="-s -w"     -o /dev/null ./cmd/sync
+
+          echo "## Build OK" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Commit: \`${GIT_COMMIT}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Time: \`${BUILD_TIME}\`" >> "$GITHUB_STEP_SUMMARY"
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # Job 5: Docker — build + push images to GHCR (push event only)
+  # ───────────────────────────────────────────────────────────────────────────
+  docker:
+    name: Docker
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: github.event_name == 'push'
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── API image tags ──
+      - name: Docker meta (API)
+        id: meta-api
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.API_IMAGE }}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix=,format=short
+            type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', 'main') }}
+
+      - name: Build and push API image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deployments/docker/Dockerfile
+          target: api
+          push: true
+          tags: ${{ steps.meta-api.outputs.tags }}
+          labels: ${{ steps.meta-api.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            GIT_COMMIT=${{ github.sha }}
+            BUILD_TIME=${{ github.event.head_commit.timestamp }}
+
+      # ── Worker image tags ──
+      - name: Docker meta (Worker)
+        id: meta-worker
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.WORKER_IMAGE }}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix=,format=short
+            type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', 'main') }}
+
+      - name: Build and push Worker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deployments/docker/Dockerfile
+          target: worker
+          push: true
+          tags: ${{ steps.meta-worker.outputs.tags }}
+          labels: ${{ steps.meta-worker.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            GIT_COMMIT=${{ github.sha }}
+            BUILD_TIME=${{ github.event.head_commit.timestamp }}
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Docker Images Pushed" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Image | Tags |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|-------|------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| API | \`${{ steps.meta-api.outputs.tags }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Worker | \`${{ steps.meta-worker.outputs.tags }}\` |" >> "$GITHUB_STEP_SUMMARY"
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # Job 6: Security Scan — Trivy container image vulnerability scan
+  # ───────────────────────────────────────────────────────────────────────────
+  scan:
+    name: Image Scan
+    runs-on: ubuntu-latest
+    needs: [docker]
+    if: github.event_name == 'push'
+    permissions:
+      contents: read
+      packages: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── Scan API image ──
+      - name: Scan API image (Trivy)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.API_IMAGE }}:${{ github.ref_name }}
+          format: table
+          exit-code: 1
+          severity: CRITICAL,HIGH
+          timeout: 10m
+
+      - name: Scan API image (SARIF)
+        if: always()
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.API_IMAGE }}:${{ github.ref_name }}
+          format: sarif
+          output: trivy-api.sarif
+          severity: CRITICAL,HIGH,MEDIUM
+          timeout: 10m
+
+      # ── Scan Worker image ──
+      - name: Scan Worker image (Trivy)
+        if: always()
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.WORKER_IMAGE }}:${{ github.ref_name }}
+          format: table
+          exit-code: 1
+          severity: CRITICAL,HIGH
+          timeout: 10m
+
+      - name: Scan Worker image (SARIF)
+        if: always()
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.WORKER_IMAGE }}:${{ github.ref_name }}
+          format: sarif
+          output: trivy-worker.sarif
+          severity: CRITICAL,HIGH,MEDIUM
+          timeout: 10m
+
+      # ── Upload SARIF to GitHub Security tab ──
+      - name: Upload API SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-api.sarif
+          category: trivy-api
+
+      - name: Upload Worker SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-worker.sarif
+          category: trivy-worker
+
+      # ── Summary ──
+      - name: Scan summary
+        if: always()
+        run: |
+          echo "## Container Image Scan (Trivy)" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Image | Severity Filter | Result |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|-------|-----------------|--------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| API | CRITICAL, HIGH | Scanned |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Worker | CRITICAL, HIGH | Scanned |" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "> Full results available in the **Security** tab → Code scanning alerts" >> "$GITHUB_STEP_SUMMARY"
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # Job 7: Notify — Discord webhook (รวมผลทุก job)
+  # ───────────────────────────────────────────────────────────────────────────
+  notify:
+    name: Notify
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [lint, test, vuln, build, docker, scan]
+    steps:
+      - name: Determine overall status
+        id: status
+        run: |
+          # ตรวจผลรวมจากทุก job
+          LINT="${{ needs.lint.result }}"
+          TEST="${{ needs.test.result }}"
+          VULN="${{ needs.vuln.result }}"
+          BUILD="${{ needs.build.result }}"
+          DOCKER="${{ needs.docker.result }}"
+          SCAN="${{ needs.scan.result }}"
+
+          echo "lint=${LINT} test=${TEST} vuln=${VULN} build=${BUILD} docker=${DOCKER} scan=${SCAN}"
+
+          # เก็บ job ที่ fail สำหรับ failure details
+          FAILED_JOBS=""
+          [ "$LINT"   = "failure" ] && FAILED_JOBS="${FAILED_JOBS}Lint, "
+          [ "$TEST"   = "failure" ] && FAILED_JOBS="${FAILED_JOBS}Test, "
+          [ "$VULN"   = "failure" ] && FAILED_JOBS="${FAILED_JOBS}Vuln, "
+          [ "$BUILD"  = "failure" ] && FAILED_JOBS="${FAILED_JOBS}Build, "
+          [ "$DOCKER" = "failure" ] && FAILED_JOBS="${FAILED_JOBS}Docker, "
+          [ "$SCAN"   = "failure" ] && FAILED_JOBS="${FAILED_JOBS}Scan, "
+          FAILED_JOBS="${FAILED_JOBS%, }"
+          echo "failed_jobs=${FAILED_JOBS}" >> "$GITHUB_OUTPUT"
+
+          # ถ้ามี failure → fail, ถ้ามี cancelled → partial, ไม่งั้น pass
+          if [[ "$LINT" == "failure" || "$TEST" == "failure" || "$VULN" == "failure" || "$BUILD" == "failure" || "$DOCKER" == "failure" || "$SCAN" == "failure" ]]; then
+            echo "result=failure" >> "$GITHUB_OUTPUT"
+          elif [[ "$LINT" == "cancelled" || "$TEST" == "cancelled" || "$VULN" == "cancelled" || "$BUILD" == "cancelled" ]]; then
+            echo "result=cancelled" >> "$GITHUB_OUTPUT"
+          else
+            echo "result=success" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build notification payload
+        id: payload
+        run: |
+          STATUS="${{ steps.status.outputs.result }}"
+          FAILED_JOBS="${{ steps.status.outputs.failed_jobs }}"
+          BRANCH="${{ github.ref_name }}"
+          SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          ACTOR="${{ github.actor }}"
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          COMMIT_MSG=$(echo '${{ github.event.head_commit.message }}' | head -1 | cut -c1-80)
+          EVENT="${{ github.event_name }}"
+
+          # PR info (ถ้าเป็น pull_request)
+          PR_INFO=""
+          if [ "$EVENT" = "pull_request" ]; then
+            PR_NUM="${{ github.event.pull_request.number }}"
+            PR_TITLE=$(echo '${{ github.event.pull_request.title }}' | cut -c1-80)
+            PR_INFO="PR #${PR_NUM}: ${PR_TITLE}"
+            BRANCH="${{ github.head_ref }} → ${{ github.base_ref }}"
+          fi
+
+          # Status emoji + color
+          if [ "$STATUS" = "success" ]; then
+            EMOJI="✅"
+            COLOR="3066993"
+            TITLE="CI Pipeline Passed"
+          elif [ "$STATUS" = "cancelled" ]; then
+            EMOJI="⚠️"
+            COLOR="16776960"
+            TITLE="CI Pipeline Cancelled"
+          else
+            EMOJI="❌"
+            COLOR="15158332"
+            TITLE="CI Pipeline Failed"
+          fi
+
+          # Job results (emoji per job)
+          job_icon() {
+            case "$1" in
+              success)  echo "✅" ;;
+              failure)  echo "❌" ;;
+              skipped)  echo "⏭️" ;;
+              cancelled) echo "⚠️" ;;
+              *)        echo "⬜" ;;
+            esac
+          }
+
+          LINT_ICON=$(job_icon "${{ needs.lint.result }}")
+          TEST_ICON=$(job_icon "${{ needs.test.result }}")
+          VULN_ICON=$(job_icon "${{ needs.vuln.result }}")
+          BUILD_ICON=$(job_icon "${{ needs.build.result }}")
+          DOCKER_ICON=$(job_icon "${{ needs.docker.result }}")
+          SCAN_ICON=$(job_icon "${{ needs.scan.result }}")
+
+          JOBS_STATUS="${LINT_ICON} Lint  ${TEST_ICON} Test  ${VULN_ICON} Vuln\n${BUILD_ICON} Build  ${DOCKER_ICON} Docker  ${SCAN_ICON} Scan"
+
+          # Failure details field (เฉพาะเวลา fail)
+          FAILURE_FIELD=""
+          if [ "$STATUS" = "failure" ] && [ -n "$FAILED_JOBS" ]; then
+            FAILURE_FIELD=",{ \"name\": \"⚠ Failed Steps\", \"value\": \"${FAILED_JOBS}\\n[View Logs](${RUN_URL})\", \"inline\": false }"
+          fi
+
+          # PR field (เฉพาะ pull_request event)
+          PR_FIELD=""
+          if [ -n "$PR_INFO" ]; then
+            PR_FIELD=",{ \"name\": \"Pull Request\", \"value\": \"${PR_INFO}\", \"inline\": false }"
+          fi
+
+          # Build Discord embed payload (rich format)
+          cat > payload.json <<EOFPAYLOAD
+          {
+            "embeds": [{
+              "title": "${EMOJI} ${TITLE}",
+              "color": ${COLOR},
+              "fields": [
+                { "name": "Branch", "value": "\`${BRANCH}\`", "inline": true },
+                { "name": "Commit", "value": "\`${SHA}\`", "inline": true },
+                { "name": "Author", "value": "${ACTOR}", "inline": true },
+                { "name": "Message", "value": "${COMMIT_MSG}", "inline": false },
+                { "name": "Jobs", "value": "${JOBS_STATUS}", "inline": false }
+                ${PR_FIELD}
+                ${FAILURE_FIELD}
+              ],
+              "url": "${RUN_URL}",
+              "footer": { "text": "ANC Portal CI" },
+              "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            }]
+          }
+          EOFPAYLOAD
+
+          echo "Built payload for status: ${STATUS}"
+
+      - name: Send Discord notification
+        if: vars.DISCORD_WEBHOOK_URL != ''
+        run: |
+          curl -sf -H "Content-Type: application/json" \
+            -d @payload.json \
+            "${{ vars.DISCORD_WEBHOOK_URL }}" || echo "::warning::Discord notification failed"

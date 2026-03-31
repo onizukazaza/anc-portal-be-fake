@@ -1,0 +1,157 @@
+# =============================================================================
+# CD — Deploy to Staging
+# =============================================================================
+# Trigger: push ไป develop (หลัง CI ผ่าน) หรือ manual dispatch
+# Flow:    migrate job → deploy API + Worker → verify rollout → smoke test
+# =============================================================================
+name: Deploy Staging
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [develop]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false   # ไม่ cancel deploy ที่กำลังทำงาน
+
+permissions:
+  contents: read
+
+env:
+  KUBE_NAMESPACE: anc-portal
+  OVERLAY_DIR: deployments/k8s/overlays/staging
+  API_IMAGE: ghcr.io/${{ github.repository }}
+  WORKER_IMAGE: ghcr.io/${{ github.repository }}-worker
+
+jobs:
+  deploy:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    # รันเฉพาะเมื่อ CI สำเร็จ (หรือ manual dispatch)
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    environment:
+      name: staging
+      url: https://api-staging.anc-portal.example.com/healthz
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Determine image tag
+        id: tag
+        run: |
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          echo "sha=${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+          echo "Image tag: ${SHORT_SHA}"
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Configure kubeconfig
+        run: |
+          mkdir -p "$HOME/.kube"
+          echo "${{ secrets.KUBE_CONFIG_STAGING }}" | base64 -d > "$HOME/.kube/config"
+          chmod 600 "$HOME/.kube/config"
+
+      # ─── Step 1: Database Migration ───
+      - name: Run database migration
+        run: |
+          echo ">> Cleaning up previous migration job..."
+          kubectl delete job -n ${{ env.KUBE_NAMESPACE }} \
+            -l app.kubernetes.io/component=migration \
+            --ignore-not-found
+
+          echo ">> Applying migration job with tag: ${{ steps.tag.outputs.sha }}"
+          cd ${{ env.OVERLAY_DIR }}
+          kustomize edit set image \
+            ghcr.io/onizukazaza/anc-portal-be-fake=${{ env.API_IMAGE }}:${{ steps.tag.outputs.sha }} \
+            ghcr.io/anc-portal/anc-portal-worker=${{ env.WORKER_IMAGE }}:${{ steps.tag.outputs.sha }}
+
+          kustomize build . \
+            | kubectl apply -f - \
+              -l app.kubernetes.io/component=migration
+
+          echo ">> Waiting for migration to complete..."
+          kubectl wait --for=condition=complete job \
+            -n ${{ env.KUBE_NAMESPACE }} \
+            -l app.kubernetes.io/component=migration \
+            --timeout=120s
+
+          echo "Migration completed successfully"
+
+      # ─── Step 2: Deploy API + Worker ───
+      - name: Deploy application
+        run: |
+          echo ">> Deploying with tag: ${{ steps.tag.outputs.sha }}"
+          cd ${{ env.OVERLAY_DIR }}
+          kustomize build . | kubectl apply -f -
+
+      # ─── Step 3: Wait for Rollout ───
+      - name: Wait for API rollout
+        run: |
+          kubectl rollout status deployment \
+            -n ${{ env.KUBE_NAMESPACE }} \
+            -l app.kubernetes.io/component=api \
+            --timeout=180s
+
+      - name: Wait for Worker rollout
+        run: |
+          kubectl rollout status deployment \
+            -n ${{ env.KUBE_NAMESPACE }} \
+            -l app.kubernetes.io/component=worker \
+            --timeout=180s
+
+      # ─── Step 4: Smoke Test ───
+      - name: Smoke test (healthz)
+        run: |
+          echo ">> Port-forwarding to API service..."
+          kubectl port-forward svc/stg-anc-portal-api 20000:80 \
+            -n ${{ env.KUBE_NAMESPACE }} &
+          PF_PID=$!
+          sleep 5
+
+          HTTP_CODE=$(curl -sf -o /dev/null -w "%{http_code}" \
+            --max-time 10 http://localhost:20000/healthz || echo "000")
+
+          kill $PF_PID 2>/dev/null || true
+
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "::error::Smoke test FAILED — /healthz returned ${HTTP_CODE}"
+            exit 1
+          fi
+
+          echo "Smoke test PASSED — /healthz returned 200"
+
+      # ─── Summary ───
+      - name: Deployment summary
+        if: always()
+        run: |
+          echo "## Staging Deployment" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Tag:** \`${{ steps.tag.outputs.sha }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Status:** ${{ job.status }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Namespace:** \`${{ env.KUBE_NAMESPACE }}\`" >> "$GITHUB_STEP_SUMMARY"
+
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "### Running Pods" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          kubectl get pods -n ${{ env.KUBE_NAMESPACE }} \
+            -l app.kubernetes.io/part-of=anc-portal \
+            -o wide --no-headers 2>/dev/null || echo "Could not fetch pods"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      # ─── Notify on success ───
+      - name: Notify success (Discord)
+        if: success() && vars.DISCORD_WEBHOOK_URL != ''
+        run: |
+          curl -sf -H "Content-Type: application/json" \
+            -d "{\"embeds\":[{\"title\":\"✅ Staging Deployed\",\"color\":3066993,\"fields\":[{\"name\":\"Commit\",\"value\":\"\`${{ steps.tag.outputs.sha }}\`\",\"inline\":true},{\"name\":\"Author\",\"value\":\"${{ github.actor }}\",\"inline\":true}],\"url\":\"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\",\"footer\":{\"text\":\"ANC Portal CD\"}}]}" \
+            "${{ vars.DISCORD_WEBHOOK_URL }}" || true
+
+      # ─── Notify on failure ───
+      - name: Notify failure (Discord)
+        if: failure() && vars.DISCORD_WEBHOOK_URL != ''
+        run: |
+          curl -sf -H "Content-Type: application/json" \
+            -d "{\"embeds\":[{\"title\":\"❌ Staging Deploy Failed\",\"color\":15158332,\"fields\":[{\"name\":\"Commit\",\"value\":\"\`${{ steps.tag.outputs.sha }}\`\",\"inline\":true},{\"name\":\"Author\",\"value\":\"${{ github.actor }}\",\"inline\":true}],\"url\":\"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\",\"footer\":{\"text\":\"ANC Portal CD\"}}]}" \
+            "${{ vars.DISCORD_WEBHOOK_URL }}" || true
