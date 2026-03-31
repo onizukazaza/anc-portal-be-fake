@@ -361,43 +361,48 @@ jobs:
           FAILED_JOBS="${{ steps.status.outputs.failed_jobs }}"
           BRANCH="${{ github.ref_name }}"
           SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          FULL_SHA="${{ github.sha }}"
           ACTOR="${{ github.actor }}"
           RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          COMMIT_MSG=$(echo '${{ github.event.head_commit.message }}' | head -1 | cut -c1-80)
+          REPO_URL="${{ github.server_url }}/${{ github.repository }}"
+          COMMIT_MSG=$(echo '${{ github.event.head_commit.message }}' | head -1 | cut -c1-72)
           EVENT="${{ github.event_name }}"
 
-          # PR info (ถ้าเป็น pull_request)
-          PR_INFO=""
+          # PR info
+          PR_FIELD=""
           if [ "$EVENT" = "pull_request" ]; then
             PR_NUM="${{ github.event.pull_request.number }}"
-            PR_TITLE=$(echo '${{ github.event.pull_request.title }}' | cut -c1-80)
-            PR_INFO="PR #${PR_NUM}: ${PR_TITLE}"
+            PR_TITLE=$(echo '${{ github.event.pull_request.title }}' | cut -c1-72)
+            PR_FIELD=",{ \"name\": \"🔗 Pull Request\", \"value\": \"[PR #${PR_NUM}: ${PR_TITLE}](${REPO_URL}/pull/${PR_NUM})\", \"inline\": false }"
             BRANCH="${{ github.head_ref }} → ${{ github.base_ref }}"
           fi
 
-          # Status emoji + color
+          # Status badge
           if [ "$STATUS" = "success" ]; then
             EMOJI="✅"
             COLOR="3066993"
-            TITLE="CI Pipeline Passed"
+            TITLE="Pipeline Passed"
+            STATUS_BADGE="PASSED"
           elif [ "$STATUS" = "cancelled" ]; then
             EMOJI="⚠️"
             COLOR="16776960"
-            TITLE="CI Pipeline Cancelled"
+            TITLE="Pipeline Cancelled"
+            STATUS_BADGE="CANCELLED"
           else
             EMOJI="❌"
             COLOR="15158332"
-            TITLE="CI Pipeline Failed"
+            TITLE="Pipeline Failed"
+            STATUS_BADGE="FAILED"
           fi
 
-          # Job results (emoji per job)
+          # Job icons (infra-style with bold names)
           job_icon() {
             case "$1" in
-              success)  echo "✅" ;;
-              failure)  echo "❌" ;;
-              skipped)  echo "⏭️" ;;
+              success)   echo "✅" ;;
+              failure)   echo "❌" ;;
+              skipped)   echo "⏭️" ;;
               cancelled) echo "⚠️" ;;
-              *)        echo "⬜" ;;
+              *)         echo "⬜" ;;
             esac
           }
 
@@ -408,37 +413,35 @@ jobs:
           DOCKER_ICON=$(job_icon "${{ needs.docker.result }}")
           SCAN_ICON=$(job_icon "${{ needs.scan.result }}")
 
-          JOBS_STATUS="${LINT_ICON} Lint  ${TEST_ICON} Test  ${VULN_ICON} Vuln\n${BUILD_ICON} Build  ${DOCKER_ICON} Docker  ${SCAN_ICON} Scan"
+          JOBS_STATUS="${LINT_ICON} **Lint**\n${TEST_ICON} **Test**\n${VULN_ICON} **Vuln**\n${BUILD_ICON} **Build**\n${DOCKER_ICON} **Docker**\n${SCAN_ICON} **Scan**"
 
-          # Failure details field (เฉพาะเวลา fail)
+          # Failure details field
           FAILURE_FIELD=""
           if [ "$STATUS" = "failure" ] && [ -n "$FAILED_JOBS" ]; then
-            FAILURE_FIELD=",{ \"name\": \"⚠ Failed Steps\", \"value\": \"${FAILED_JOBS}\\n[View Logs](${RUN_URL})\", \"inline\": false }"
+            FAILURE_FIELD=",{ \"name\": \"⚠️ Failed Steps\", \"value\": \"${FAILED_JOBS}\\n[→ View Logs](${RUN_URL})\", \"inline\": false }"
           fi
 
-          # PR field (เฉพาะ pull_request event)
-          PR_FIELD=""
-          if [ -n "$PR_INFO" ]; then
-            PR_FIELD=",{ \"name\": \"Pull Request\", \"value\": \"${PR_INFO}\", \"inline\": false }"
-          fi
+          # Description block (infra-style env metadata)
+          DESC="\`\`\`env\\nENV      = github-actions\\nSTATUS   = ${STATUS_BADGE}\\nRUN      = #${{ github.run_number }}\\nTRIGGER  = ${EVENT}\\n\`\`\`"
 
-          # Build Discord embed payload (rich format)
+          # Build Discord embed payload
           cat > payload.json <<EOFPAYLOAD
           {
             "embeds": [{
               "title": "${EMOJI} ${TITLE}",
+              "description": "${DESC}",
               "color": ${COLOR},
               "fields": [
-                { "name": "Branch", "value": "\`${BRANCH}\`", "inline": true },
-                { "name": "Commit", "value": "\`${SHA}\`", "inline": true },
-                { "name": "Author", "value": "${ACTOR}", "inline": true },
-                { "name": "Message", "value": "${COMMIT_MSG}", "inline": false },
-                { "name": "Jobs", "value": "${JOBS_STATUS}", "inline": false }
+                { "name": "🔀 Branch", "value": "\`${BRANCH}\`", "inline": true },
+                { "name": "📝 Commit", "value": "[\`${SHA}\`](${REPO_URL}/commit/${FULL_SHA})", "inline": true },
+                { "name": "👤 Author", "value": "[${ACTOR}](https://github.com/${ACTOR})", "inline": true },
+                { "name": "💬 Message", "value": "${COMMIT_MSG}", "inline": false },
+                { "name": "🛠️ Jobs", "value": "${JOBS_STATUS}", "inline": false }
                 ${PR_FIELD}
                 ${FAILURE_FIELD}
               ],
               "url": "${RUN_URL}",
-              "footer": { "text": "ANC Portal CI" },
+              "footer": { "text": "📡 ANC Portal CI • GitHub Actions" },
               "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
             }]
           }

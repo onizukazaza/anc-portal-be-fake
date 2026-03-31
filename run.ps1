@@ -239,86 +239,95 @@ switch ($Command) {
             if (-not $sha) { $sha = "unknown" }
             $commitMsg = git log -1 --pretty=%s 2>$null
             if (-not $commitMsg) { $commitMsg = "" }
-            if ($commitMsg.Length -gt 80) { $commitMsg = $commitMsg.Substring(0, 80) + "..." }
-            # Escape special JSON characters in commit message
+            if ($commitMsg.Length -gt 72) { $commitMsg = $commitMsg.Substring(0, 72) + "..." }
             $commitMsg = $commitMsg -replace '\\', '\\\\' -replace '"', '\"'
             $hostname = $env:COMPUTERNAME
             $username = $env:USERNAME
-
-            # Status (use Unicode escapes for Discord)
-            if ($failed) {
-                $titleEmoji = "\u274c"
-                $title = "CI Pipeline Failed (Local)"
-                $color = 15158332
-            } else {
-                $titleEmoji = "\u2705"
-                $title = "CI Pipeline Passed (Local)"
-                $color = 3066993
+            $repoUrl = git config --get remote.origin.url 2>$null
+            if ($repoUrl) {
+                $repoUrl = $repoUrl -replace '\.git$', ''
+                $repoUrl = $repoUrl -replace 'git@github\.com:', 'https://github.com/'
             }
 
-            # Job icons per result (Unicode escapes)
+            # Status
+            if ($failed) {
+                $titleEmoji = "\u274c"
+                $title = "Pipeline Failed"
+                $color = 15158332
+                $statusBadge = "FAILED"
+            } else {
+                $titleEmoji = "\u2705"
+                $title = "Pipeline Passed"
+                $color = 3066993
+                $statusBadge = "PASSED"
+            }
+
+            # Job status table (infra-style)
             $jobLines = @()
             foreach ($r in $results) {
                 switch ($r.Status) {
                     "PASS" { $icon = "\u2705" }
                     "FAIL" { $icon = "\u274c" }
-                    "SKIP" { $icon = "\u23ed" }
+                    "SKIP" { $icon = "\u23ed\ufe0f" }
                     default { $icon = "\u2b1c" }
                 }
-                $t = if ($r.Time -gt 0) { " ($($r.Time)s)" } else { "" }
-                $jobLines += "${icon} $($r.Name)${t}"
+                $t = if ($r.Time -gt 0) { "``$($r.Time)s``" } else { "``-``" }
+                $jobLines += "${icon} **$($r.Name)** $t"
             }
-            $jobsText = $jobLines -join "  "
+            $jobsText = $jobLines -join '\n'
 
-            # Build JSON payload manually (avoids PS 5.1 ConvertTo-Json Unicode issues)
-            $ts = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
-
-            # Failure details field (only when failed)
+            # Failure details
             $failureField = ""
             $locationField = ""
             if ($failed -and $failureDetails) {
-                # Escape JSON special chars in failure details
                 $escapedDetails = $failureDetails -replace '\\', '\\\\' -replace '"', '\"' -replace "`r`n", '\n' -replace "`n", '\n' -replace "`t", '  '
-                $failureField = ",{`"name`":`"\u26a0 Failure Details`",`"value`":`"``````\n${escapedDetails}\n```````",`"inline`":false}"
+                $failureField = ",{`"name`":`"\u26a0\ufe0f Failure Output`",`"value`":`"``````\n${escapedDetails}\n```````",`"inline`":false}"
 
-                # Extract error locations (file:line:col) from raw output
                 $locMatches = [regex]::Matches($failureDetails, '(?m)([a-zA-Z0-9_\-\\\/\.]+\.go:\d+(?::\d+)?)')
                 $locations = @()
                 foreach ($m in $locMatches) {
                     $loc = $m.Value -replace '\\', '/'
                     if ($locations -notcontains $loc) { $locations += $loc }
                 }
-                if ($locations.Count -gt 0) {
-                    # Get GitHub repo URL for linking
-                    $repoUrl = git config --get remote.origin.url 2>$null
-                    if ($repoUrl) {
-                        $repoUrl = $repoUrl -replace '\.git$', ''
-                        $repoUrl = $repoUrl -replace 'git@github\.com:', 'https://github.com/'
-                    }
-
-                    # Limit to 10 locations to avoid embed overflow
-                    $shownLocs = $locations | Select-Object -First 10
+                if ($locations.Count -gt 0 -and $repoUrl) {
+                    $shownLocs = $locations | Select-Object -First 8
                     $locLines = ($shownLocs | ForEach-Object {
                         $fileLine = $_
-                        if ($repoUrl -and $fileLine -match '^(.+):(\d+)') {
+                        if ($fileLine -match '^(.+):(\d+)') {
                             $fPath = $Matches[1]
                             $lineNum = $Matches[2]
-                            "[$fileLine](${repoUrl}/blob/${branch}/${fPath}#L${lineNum})"
+                            $linkUrl = "${repoUrl}/blob/${branch}/${fPath}#L${lineNum}"
+                            "\u2022 [``${fileLine}``](${linkUrl})"
                         } else {
-                            "``$fileLine``"
+                            "\u2022 ``${fileLine}``"
                         }
                     }) -join '\n'
-                    if ($locations.Count -gt 10) { $locLines += "\n... +$($locations.Count - 10) more" }
+                    if ($locations.Count -gt 8) {
+                        $extra = $locations.Count - 8
+                        $locLines += '\n... +' + $extra + ' more'
+                    }
                     $locationField = ",{`"name`":`"\ud83d\udccd Error Locations`",`"value`":`"${locLines}`",`"inline`":false}"
-                } else {
-                    $locationField = ",{`"name`":`"\ud83d\udccd Error Locations`",`"value`":`"\u0e0a\u0e35\u0e49\u0e08\u0e38\u0e14\u0e44\u0e21\u0e48\u0e44\u0e14\u0e49 \u2014 \u0e14\u0e39 Failure Details \u0e14\u0e49\u0e32\u0e19\u0e1a\u0e19`",`"inline`":false}"
                 }
             }
 
+            # Build description block (infra-style metadata)
+            $desc = "``````env\nENV      = local\nSTATUS   = ${statusBadge}\nDURATION = ${totalSec}s\nMACHINE  = ${username}@${hostname}\n``````"
+
+            # Commit URL
+            $commitField = "``${sha}``"
+            if ($repoUrl) {
+                $fullSha = git rev-parse HEAD 2>$null
+                if ($fullSha) {
+                    $commitUrl = "${repoUrl}/commit/${fullSha}"
+                    $commitField = "[``${sha}``](${commitUrl})"
+                }
+            }
+
+            $ts = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+
             $payload = @"
-{"embeds":[{"title":"$titleEmoji $title","color":$color,"fields":[{"name":"Branch","value":"``$branch``","inline":true},{"name":"Commit","value":"``$sha``","inline":true},{"name":"Machine","value":"${username}@${hostname}","inline":true},{"name":"Message","value":"$commitMsg","inline":false},{"name":"Jobs","value":"$jobsText","inline":false},{"name":"Total Time","value":"${totalSec}s","inline":true}${failureField}${locationField}],"footer":{"text":"ANC Portal CI (Local)"},"timestamp":"$ts"}]}
+{"embeds":[{"title":"$titleEmoji $title","description":"$desc","color":$color,"fields":[{"name":"\ud83d\udd00 Branch","value":"``$branch``","inline":true},{"name":"\ud83d\udcdd Commit","value":"$commitField","inline":true},{"name":"\ud83d\udc64 Author","value":"${username}","inline":true},{"name":"\ud83d\udcac Message","value":"$commitMsg","inline":false},{"name":"\ud83d\udee0\ufe0f Jobs","value":"${jobsText}","inline":false}${failureField}${locationField}],"footer":{"text":"\ud83d\udce1 ANC Portal CI \u2022 Local"},"timestamp":"$ts"}]}
 "@
-            # Send as UTF-8
             $utf8 = [System.Text.Encoding]::UTF8.GetBytes($payload)
 
             try {
