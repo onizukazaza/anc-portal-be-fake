@@ -25,8 +25,11 @@
         │  auth       │        │  otel        │       │  Docker      │
         │  cmi        │        │  kafka       │       │  Kubernetes  │
         │  quotation  │        │  cache       │       │  GitHub CI   │
-        │  policy     │        │  httpclient  │       │  Grafana     │
-        │  payment    │        │  retry       │       │  Dependabot  │
+        │  document   │        │  httpclient  │       │  Grafana     │
+        │  policy     │        │  retry       │       │  Dependabot  │
+        │  payment    │        │  log         │       │              │
+        │  job        │        │  buildinfo   │       │              │
+        │  notification│       │              │       │              │
         └──────┬──────┘        └──────┬───────┘       └──────────────┘
                │                      │
                ▼                      ▼
@@ -522,6 +525,9 @@ anc-portal-be/
 │   │   ├── auth/          ← Authentication
 │   │   ├── cmi/           ← พรบ. เดี่ยว
 │   │   ├── quotation/     ← ใบเสนอราคา
+│   │   ├── document/      ← เอกสาร
+│   │   ├── job/           ← งาน (placeholder)
+│   │   ├── notification/  ← การแจ้งเตือน
 │   │   ├── externaldb/    ← External DB health check
 │   │   ├── webhook/       ← GitHub Webhook → Discord
 │   │   ├── policy/        ← กรมธรรม์ (future)
@@ -587,6 +593,7 @@ anc-portal-be/
 | ⚡ | [Grafana Quick Start](documents/observability/otel-grafana-quickstart.md) | Observability stack setup (5 นาที) |
 | 🚀 | [Deployment Guide](documents/infrastructure/deployment-guide.md) | Local → Staging → Production |
 | ☸️ | [Kubernetes Guide](documents/infrastructure/kubernetes-guide.md) | K8s manifests, Kustomize overlays |
+| 🌐 | [INET Readiness](documents/infrastructure/inet-readiness-assessment.md) | ประเมินความพร้อม deploy บน INET Cloud |
 | 💾 | [Redis Cache](documents/infrastructure/redis-cache-guide.md) | Cache patterns, Hybrid L1→L2 |
 | 🧪 | [Unit Test Guide](documents/testing/unit-test-guide.md) | Test patterns, testkit, fakes |
 | 📝 | [Unit Test Cheatsheet](documents/testing/unit-test-cheatsheet.md) | Quick reference — commands, patterns |

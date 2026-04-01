@@ -40,6 +40,7 @@
 | [Deployment Guide](infrastructure/deployment-guide.md) | ขั้นตอน deploy ทั้ง Docker + Kubernetes |
 | [Kubernetes Guide](infrastructure/kubernetes-guide.md) | Kubernetes concepts + manifests |
 | [Resource Spec Guide](infrastructure/resource-spec-guide.md) | CPU/Memory requests & limits |
+| [INET Readiness Assessment](infrastructure/inet-readiness-assessment.md) | ประเมินความพร้อม deploy บน INET Cloud |
 | [Redis Cache Guide](infrastructure/redis-cache-guide.md) | การใช้ Redis + Hybrid L1→L2 cache |
 | [Discord Notification](infrastructure/discord-notification.md) | ตั้ง Discord Webhook สำหรับ CI/CD notification |
 
