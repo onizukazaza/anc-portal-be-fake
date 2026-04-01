@@ -24,8 +24,7 @@
 | [CI Pipeline Stages](cicd/ci-pipeline-stages.md) | รายละเอียด 7 stages ของ CI pipeline |
 | [Workflow Concept](cicd/workflow-concept.md) | อธิบาย push → CI → deploy staging → tag → production |
 | [GitHub Actions Setup](cicd/github-actions-setup.md) | วิธีตั้งค่า GitHub Actions + Secrets |
-| [Dependabot Concept](cicd/dependabot-concept.md) | อธิบาย Dependabot คืออะไร + config |
-| [Dependabot Usage Guide](cicd/dependabot-usage-guide.md) | วิธีจัดการ PR ของ Dependabot (review, approve, merge) |
+| [Dependabot Guide](cicd/dependabot-guide.md) | คู่มือ Dependabot ฉบับสมบูรณ์ — คืออะไร, config, วิธีจัดการ PR |
 
 ## Observability — Monitoring & Tracing
 
@@ -41,6 +40,7 @@
 | [Deployment Guide](infrastructure/deployment-guide.md) | ขั้นตอน deploy ทั้ง Docker + Kubernetes |
 | [Kubernetes Guide](infrastructure/kubernetes-guide.md) | Kubernetes concepts + manifests |
 | [Resource Spec Guide](infrastructure/resource-spec-guide.md) | CPU/Memory requests & limits |
+| [INET Readiness Assessment](infrastructure/inet-readiness-assessment.md) | ประเมินความพร้อม deploy บน INET Cloud |
 | [Redis Cache Guide](infrastructure/redis-cache-guide.md) | การใช้ Redis + Hybrid L1→L2 cache |
 | [Discord Notification](infrastructure/discord-notification.md) | ตั้ง Discord Webhook สำหรับ CI/CD notification |
 

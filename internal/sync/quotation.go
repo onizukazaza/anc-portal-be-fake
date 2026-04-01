@@ -11,7 +11,7 @@ import (
 	"github.com/onizukazaza/anc-portal-be-fake/pkg/log"
 )
 
-// QuotationSyncer sync ข้อมูล quotations จาก external DB → main DB.
+// >> QuotationSyncer sync ข้อมูล quotations จาก external DB → main DB.
 type QuotationSyncer struct {
 	source *pgxpool.Pool // external DB (read)
 	dest   *pgxpool.Pool // main DB (write)

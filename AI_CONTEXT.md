@@ -6,11 +6,12 @@ This file defines the working rules for AI assistants and contributors in this p
 
 The goal is to keep changes consistent with the intended architecture:
 
-* feature-first structure
-* clear separation of responsibility inside each feature
-* easy testing
+* module-first structure (`internal/modules/{module}/`)
+* hexagonal architecture: `domain/` → `ports/` → `app/` → `adapters/`
+* clear separation of responsibility inside each module
+* easy testing with hand-written fakes (no external test deps)
 * infrastructure can change without breaking business logic
-* changes remain local to the related feature whenever possible
+* changes remain local to the related module whenever possible
 
 ---
 
@@ -31,75 +32,108 @@ State the conflict, then proceed with the safest minimal change.
 ## Architecture Overview
 
 * Language: Go 1.25
-* Architecture style: Clean Architecture + feature-first
-* Main flow inside a feature: `Handler -> Service -> Ports -> Repository/Integration`
+* Architecture style: Modular Monolith + Hexagonal (Ports & Adapters), feature-first
+* Main flow inside a module: `Handler (adapters/http) → Service (app) → Port (interface) → Repository/Integration (adapters)`
 
 Design intent:
 
-* each business feature owns its own layers
-* handler handles transport concerns
-* service contains orchestration and business rules
-* ports define contracts required by service
-* repository/integration are adapter implementations inside the feature
+* each business module owns its own layers inside `internal/modules/{module}/`
+* `adapters/http/` handles transport concerns (Fiber handlers)
+* `app/` contains orchestration and business rules (service layer)
+* `ports/` define contracts required by the service
+* `adapters/postgres/` are repository implementations
+* `adapters/external/` are non-DB adapter implementations (e.g. JWT signer)
+* `domain/` contains pure structs (no imports)
+* `module.go` is the composition root — wires dependencies
 * business logic should remain independent from infrastructure details
-* cross-feature dependency should be kept minimal and explicit
+* cross-module dependency should be kept minimal and explicit
 
 ---
 
 ## Project Structure
 
-Example:
+Actual structure:
 
 ```text
 internal/
-  app/
-  config/
-  domain/
-  job/
-    handler/
-      http/
-        handler.go
-        dto.go
-        mapper.go
-    service/
-      service.go
-      create_job.go
-      create_job_flow.go
-      get_job.go
-      list_jobs.go
-      testkit_test.go
-      create_job_test.go
-    ports/
-      outbound.go
-    repository/
-      postgres/
-        repository.go
-        dto.go
-        mapping.go
-        repository_unit_test.go
-        repository_integration_test.go
-    integration/
-      line/
-        client.go
-      email/
-        sender.go
+  database/          # Multi-driver DB layer (postgres, mysql)
+    provider.go      # Interface — module calls this
+    conn.go          # ExternalConn interface + type-safe helpers
+    manager.go       # Orchestrator (composition root for DB)
+    postgres/        # PostgreSQL driver
+    mysql/           # MySQL driver
+    seed/            # Seed data logic
 
-  user/
-    handler/
-      http/
-        handler.go
-    service/
-      service.go
-      create_user.go
-      get_user.go
-    ports/
-      outbound.go
-    repository/
-      postgres/
-        repository.go
-    integration/
-      cloudtask/
-        client.go
+  modules/
+    auth/
+      module.go      # Composition root — wires deps
+      domain/
+        auth.go      # Pure domain structs
+      ports/
+        token_signer.go
+        user_repository.go
+      app/
+        service.go        # Business logic
+        service_test.go   # Behavior tests
+        fakes_test.go     # Hand-written fakes
+      adapters/
+        http/
+          controller.go   # Route registration
+          handler.go      # HTTP handlers + DTOs
+        postgres/
+          user_repository.go  # SQL implementation
+        external/
+          jwt_token_signer.go
+          simple_token_signer.go
+
+    cmi/
+      module.go
+      domain/
+      ports/
+      app/
+      adapters/
+        http/
+          controller.go
+          handler.go
+          handler_test.go
+          fakes_test.go
+        postgres/
+          repository.go
+          repository_test.go
+
+    document/        # Document management
+    externaldb/      # External DB health check
+    job/             # Job (placeholder)
+    notification/    # Notification
+    payment/         # Payment (future)
+    policy/          # Policy (future)
+    quotation/       # Quotation
+    webhook/         # GitHub Webhook → Discord
+
+  shared/
+    dto/             # Error codes, response
+    enum/            # String-based enums (no iota)
+    module/          # Shared module deps
+    pagination/      # Pagination helpers
+    utils/           # ID, JSON, pointer, slice, string utils
+    validator/       # Fiber request validation
+
+  testkit/           # Test assertion library (Go Generics, zero deps)
+  import/            # CSV importers
+  sync/              # Data sync framework
+
+config/              # Viper configuration loader
+server/              # Fiber server + routing + middleware
+pkg/
+  otel/              # OpenTelemetry (tracing + metrics)
+  kafka/             # Kafka producer/consumer + DLQ
+  cache/             # Redis cache client
+  localcache/        # Otter in-memory cache (L1→L2 hybrid)
+  httpclient/        # HTTP client + retry + tracing + circuit breaker
+  retry/             # Retry strategies
+  log/               # zerolog wrapper
+  banner/            # Startup banner
+  buildinfo/         # Git commit + build time
 ```
 
 ---
@@ -116,73 +150,72 @@ internal/
 
 * architecture notes
 * orchestration guides
-* integration test guides
 * conceptual references
 
-### internal/app
+### config/
 
-* composition root
-* system wiring
-* dependency initialization across features
+* load environment and app config (Viper)
 
-### internal/app/bootstrap.go
+### internal/database/
 
-* wire all dependencies
-* assemble feature handlers, services, repositories, integrations
+* Multi-driver database layer (Postgres + MySQL)
+* `provider.go` — Interface (contract that modules call)
+* `conn.go` — ExternalConn interface + type-safe helpers (`PgxPool()`, `SQLDB()`)
+* `manager.go` — Composition root: switch-case driver, connect, lifecycle
+* Modules use interface only, never import driver directly
 
-### internal/app/connectors.go
+### internal/domain/ (per module)
 
-* initialize DB/cache/external connectors shared by the application
-
-### internal/config
-
-* load environment and app config
-
-### internal/domain
-
-* core business entities and value objects shared across the system
+* core business entities and value objects
 * should remain framework/infrastructure independent
+* lives inside each module: `internal/modules/{module}/domain/`
 
-### internal/{feature}/handler
+### internal/modules/{module}/adapters/http/
 
-* transport entrypoints for that feature
-* HTTP handlers
-* request/response DTOs
-* request validation at transport level
-* response formatting
-* mapping between transport DTOs and service input/output
+* transport entrypoints for that module
+* `controller.go` — route registration
+* `handler.go` — HTTP handlers, DTOs, validation, response formatting
 
-### internal/{feature}/service
+### internal/modules/{module}/app/
 
 * orchestration
 * business rules
-* application flow coordination for that feature
+* application flow coordination for that module
 * should not contain SQL, HTTP framework details, or SDK-specific details
 
-### internal/{feature}/ports
+### internal/modules/{module}/ports/
 
 * contracts required by the service layer
 * define required outbound behavior before implementation
 
-### internal/{feature}/repository
+### internal/modules/{module}/adapters/postgres/
 
-* DB/cache data access implementation for that feature
+* DB data access implementation for that module
 * persistence concerns only
 * may contain DB DTOs and mapping
 
-### internal/{feature}/integration
+### internal/modules/{module}/adapters/external/
 
-* external service adapters for that feature
-* examples: LINE, email, cloud task, file move
+* non-DB adapter implementations (e.g. JWT signer, API clients)
 * should not contain core business rules
 
-### migrations
+### internal/modules/{module}/module.go
+
+* composition root for the module
+* wires dependencies (inject interfaces via constructor)
+
+### internal/shared/
+
+* cross-module utilities: DTOs, enums, pagination, validation, utils
+
+### internal/testkit/
+
+* test assertion library using Go Generics
+* zero external dependencies
+
+### migrations/
 
 * SQL schema and migration files
-
-### pkg/db
-
-* shared DB connection helpers
 
 ---
 
@@ -190,112 +223,85 @@ internal/
 
 These rules are strict unless the user explicitly asks otherwise.
 
-* Handler may call Service only.
+* Handler may call Service only (via `app/` layer).
 * Handler must not call Repository directly.
 * Service may depend on Domain and Ports.
 * Service must not depend on concrete infrastructure adapters directly.
 * Service must not contain SQL, HTTP framework details, or external service SDK details.
 * Repository may depend on DB driver/query tools and Domain mapping.
 * Repository must not contain heavy business rules.
-* Integration adapters must not contain core business rules.
+* Integration/External adapters must not contain core business rules.
 * Domain should not import handler, repository, or integration layers.
+* Domain must not import anything outside the module (pure structs only).
 * Ports must be defined before implementing adapters when introducing a new dependency.
-* Cross-feature calls should go through a clear contract/interface, not direct tight coupling by default.
-* Avoid one feature reaching into another feature’s repository directly unless explicitly justified and kept minimal.
+* Cross-module calls should go through a clear contract/interface, not direct tight coupling by default.
+* Avoid one module reaching into another module's repository directly.
 
 ---
 
-## Feature-First File Pattern
+## Module-First File Pattern
 
-Example: Job feature
+Example: Auth module
 
-### `internal/job/handler/http`
+### `internal/modules/auth/module.go`
 
-* `handler.go`
+* composition root for the module
+* wires dependencies (inject interfaces via constructor)
 
-  * HTTP entrypoints
-* `dto.go`
+### `internal/modules/auth/domain/`
 
-  * request/response DTOs
-* `mapper.go`
+* `auth.go` — pure domain structs
 
-  * transport mapping
+### `internal/modules/auth/ports/`
 
-### `internal/job/service`
+* `token_signer.go` — contract for token signing
+* `user_repository.go` — contract for user persistence
+
+### `internal/modules/auth/app/`
 
 * `service.go`
 
   * facade
   * constructor
   * dependency holder
-* `create_job.go`
+* `service_test.go`
 
-  * public usecase entrypoint for `CreateJob`
-* `create_job_flow.go`
+  * behavior tests
+* `fakes_test.go`
 
-  * detailed orchestration flow for `CreateJob`
-* `get_job.go`
+  * hand-written fakes for testing
 
-  * read capability logic
-* `list_jobs.go`
+### `internal/modules/auth/adapters/http/`
 
-  * list/search capability logic
-* `testkit_test.go`
+* `controller.go`
 
-  * shared fake/test helpers
-* `create_job_test.go`
+  * route registration
+* `handler.go`
 
-  * behavior tests for `CreateJob`
-* `get_job_test.go`
+  * HTTP handlers + DTOs
 
-  * behavior tests for `GetJob`
+### `internal/modules/auth/adapters/postgres/`
 
-### `internal/job/ports`
-
-* `outbound.go`
-
-  * contracts needed by job service
-
-### `internal/job/repository/postgres`
-
-* `repository.go`
+* `user_repository.go`
 
   * concrete SQL access
-* `dto.go`
 
-  * DB-facing DTOs
-* `mapping.go`
+### `internal/modules/auth/adapters/external/`
 
-  * DTO <-> Domain mapping
-* `mapping_test.go`
+* `jwt_token_signer.go` — JWT implementation
+* `simple_token_signer.go` — simple implementation for testing
 
-  * unit tests for mapping
-* `repository_unit_test.go`
-
-  * unit tests using sqlmock
-* `repository_integration_test.go`
-
-  * integration tests with real PostgreSQL
-
-### `internal/job/integration`
-
-* feature-owned external adapters
-* examples:
-
-  * `line/client.go`
-  * `email/sender.go`
-  * `cloudtask/client.go`
+  * behavior tests
 
 ---
 
 ## Structure Principles
 
-* Organize by feature first, then by layer inside the feature.
+* Organize by module first (`internal/modules/{module}/`), then by layer inside.
+* Each module follows hexagonal: `domain/` → `ports/` → `app/` → `adapters/`
+* `module.go` is the composition root — wires dependencies for that module.
 * Keep related code close together.
-* One feature should be understandable without jumping across many top-level folders.
-* `service.go` should stay thin.
-* Long or multi-step flows should move to `*_flow.go`.
-* Split by capability, not by technical keyword only.
+* One module should be understandable without jumping across many top-level folders.
 * Tests should be grouped by behavior/capability.
 * Do not create extra files unless they improve clarity, testability, or separation of responsibility.
 
@@ -324,30 +330,31 @@ Example: Job feature
 
 ### General
 
+* **No external test dependencies** — no testify, gomock, mockery, ginkgo
+* Use `internal/testkit` for assertions (Go Generics, zero deps)
 * Test behavior, not implementation detail.
 * Include both success path and failure path.
 * Tests must be deterministic.
-* Cleanup must be explicit.
-* Never use production DB in integration tests.
-* Credentials must come from environment, never hardcoded.
+* Use hand-written fakes (struct fields for return values), not mocks
+* Use `fakes_test.go` in the same package for test helpers
 
-### Service Tests
+### Service Tests (app/)
 
-* use fake/testkit helpers
+* use hand-written fakes implementing port interfaces
 * focus on input/output and orchestration behavior
-* avoid coupling tests to internal private helper structure unless necessary
+* `fakes_test.go` + `service_test.go` pattern
 
-### Repository Unit Tests
+### Handler Tests (adapters/http/)
 
-* use `sqlmock`
-* verify query behavior, args, scan/mapping path, and error path
+* use `setupApp + doRequest` pattern with Fiber + httptest
+* test HTTP status codes, response format, trace_id
+* `fakes_test.go` + `handler_test.go` pattern
 
-### Repository Integration Tests
+### Repository Tests (adapters/postgres/)
 
-* run against a real PostgreSQL test database
-* validate schema compatibility and actual SQL behavior
-* use env from `.env.test` / `.env`
-* cleanup with `TRUNCATE` or equivalent deterministic reset
+* use `fakeRow` from testkit for pgx.Row scan tests
+* verify query behavior, scan/mapping path, and error path
+* `repository_test.go` pattern
 
 ---
 
@@ -362,11 +369,11 @@ When modifying code:
 * if adding a new file, make sure its responsibility is obvious from the name
 * if unsure where logic belongs:
 
-  * business rule -> Service
-  * transport concern -> Handler
-  * persistence concern -> Repository
-  * external provider concern -> Integration
-  * contract/interface -> Ports
+  * business rule -> Service (app/)
+  * transport concern -> Handler (adapters/http/)
+  * persistence concern -> Repository (adapters/postgres/)
+  * external provider concern -> External Adapter (adapters/external/)
+  * contract/interface -> Ports (ports/)
 
 ---
 
@@ -386,8 +393,8 @@ A task is not complete until:
 
 ## When Unsure
 
-* Check the feature’s `ports` first for required contracts.
-* Check `internal/domain` for business shape and language.
-* Check neighboring files in the same feature before creating new patterns.
-* Prefer consistency with the existing feature over theoretical purity.
+* Check the module's `ports/` first for required contracts.
+* Check `internal/modules/{module}/domain/` for business shape and language.
+* Check neighboring files in the same module before creating new patterns.
+* Prefer consistency with the existing module over theoretical purity.
 * If ambiguity remains, state your assumption explicitly and proceed with the safest minimal implementation.
