@@ -161,7 +161,7 @@ jobs:
       # ── API image tags ──
       - name: Docker meta (API)
         id: meta-api
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.API_IMAGE }}
           tags: |
@@ -187,7 +187,7 @@ jobs:
       # ── Worker image tags ──
       - name: Docker meta (Worker)
         id: meta-worker
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.WORKER_IMAGE }}
           tags: |
