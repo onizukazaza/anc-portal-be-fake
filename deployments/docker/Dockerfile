@@ -41,7 +41,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
 # ---------------------------------------------------------------------------
 # Stage 2: Runtime base — shared runtime layer
 # ---------------------------------------------------------------------------
-FROM alpine:3.21 AS runtime-base
+FROM alpine:3.23 AS runtime-base
 
 RUN apk add --no-cache ca-certificates tzdata curl && \
     addgroup -g 10001 -S appgroup && adduser -u 10001 -S appuser -G appgroup
