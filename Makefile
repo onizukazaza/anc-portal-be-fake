@@ -186,7 +186,7 @@ local-ps: ## Show local stack status
 DOCKER_DIR = deployments/docker
 
 docker-build: ## Build API Docker image
-	docker build -f $(DOCKER_DIR)/Dockerfile \
+	docker build -f $(DOCKER_DIR)/Dockerfile --target api \
 		--build-arg GIT_COMMIT=$(GIT_COMMIT) \
 		--build-arg BUILD_TIME=$(BUILD_TIME) \
 		-t anc-portal-be .

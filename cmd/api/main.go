@@ -148,10 +148,10 @@ func main() {
 	}
 
 	// >> Redis cache setup (optional)
-	var cacheClient *cache.Client
+	var cacheClient cache.Cache
 
 	if cfg.Redis.Enabled {
-		cacheClient, err = cache.New(ctx, cache.Config{
+		rc, cacheErr := cache.New(ctx, cache.Config{
 			Host:        cfg.Redis.Host,
 			Port:        cfg.Redis.Port,
 			Password:    cfg.Redis.Password,
@@ -159,25 +159,27 @@ func main() {
 			KeyPrefix:   cfg.Redis.KeyPrefix,
 			OtelEnabled: cfg.OTel.Enabled,
 		})
-		if err != nil {
-			appLogger.Fatal().Err(err).Msg("redis connection failed")
+		if cacheErr != nil {
+			appLogger.Fatal().Err(cacheErr).Msg("redis connection failed")
 		}
-		defer cacheClient.Close()
+		defer rc.Close()
+		cacheClient = rc
 		appLogger.Info().Str("addr", fmt.Sprintf("%s:%d", cfg.Redis.Host, cfg.Redis.Port)).Msg("redis connected")
 	}
 
 	// >> Local cache setup (optional — in-memory, otter)
-	var lc *localcache.Client
+	var lc localcache.Cache
 
 	if cfg.LocalCache.Enabled {
-		lc, err = localcache.New(localcache.Config{
+		lcClient, lcErr := localcache.New(localcache.Config{
 			MaxSize: cfg.LocalCache.MaxSize,
 			TTL:     cfg.LocalCache.TTL,
 		})
-		if err != nil {
-			appLogger.Fatal().Err(err).Msg("local cache init failed")
+		if lcErr != nil {
+			appLogger.Fatal().Err(lcErr).Msg("local cache init failed")
 		}
-		defer lc.Close()
+		defer lcClient.Close()
+		lc = lcClient
 		appLogger.Info().Int("max_size", cfg.LocalCache.MaxSize).Dur("ttl", cfg.LocalCache.TTL).Msg("local cache initialized")
 	}
 

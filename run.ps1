@@ -498,7 +498,7 @@ switch ($Command) {
 
     "docker-build" {
         Write-Host "[docker] Building API image..." -ForegroundColor Green
-        docker build -f "$DOCKER_DIR/Dockerfile" -t anc-portal-be .
+        docker build -f "$DOCKER_DIR/Dockerfile" --target api -t anc-portal-be .
     }
     "docker-build-worker" {
         Write-Host "[docker] Building Worker image (multi-target)..." -ForegroundColor Green
