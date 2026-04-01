@@ -7,7 +7,7 @@ updates:
   # >> Go modules
   - package-ecosystem: gomod
     directory: /
-    target-branch: dev
+    target-branch: develop
     schedule:
       interval: weekly
       day: monday
@@ -24,7 +24,7 @@ updates:
   # >> GitHub Actions
   - package-ecosystem: github-actions
     directory: /
-    target-branch: dev
+    target-branch: develop
     schedule:
       interval: weekly
       day: monday
@@ -41,7 +41,7 @@ updates:
   # >> Docker base images
   - package-ecosystem: docker
     directory: /deployments/docker
-    target-branch: dev
+    target-branch: develop
     schedule:
       interval: weekly
       day: monday

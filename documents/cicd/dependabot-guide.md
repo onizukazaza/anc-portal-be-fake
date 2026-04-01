@@ -105,10 +105,10 @@
 ### Target Branch
 
 ```
-Dependabot → สร้าง PR → merge เข้า branch "dev"
+Dependabot → สร้าง PR → merge เข้า branch "develop"
 ```
 
-> หมายเหตุ: ตั้งค่าเป็น `target-branch: dev` เพื่อให้ merge เข้า dev ก่อนแล้วค่อย merge dev เข้า main
+> หมายเหตุ: ตั้งค่าเป็น `target-branch: develop` เพื่อให้ merge เข้า develop ก่อนแล้วค่อย merge develop เข้า main
 
 ### Commit Message Format
 
@@ -207,7 +207,7 @@ Dependabot → สร้าง PR → merge เข้า branch "dev"
 
 ```powershell
 # ดึงโค้ดล่าสุดมาเครื่อง
-git checkout dev
+git checkout develop
 git pull
 ```
 
@@ -238,8 +238,8 @@ git checkout dependabot/go_modules/github.com/rs/zerolog-1.35.0
 go build ./...
 go test ./...
 
-# กลับ dev
-git checkout dev
+# กลับ develop
+git checkout develop
 ```
 
 ---
@@ -326,7 +326,7 @@ comment ใน PR เพื่อสั่ง Dependabot:
 
 | Command | ทำอะไร |
 |---------|--------|
-| `@dependabot rebase` | Rebase branch ให้ up-to-date กับ dev |
+| `@dependabot rebase` | Rebase branch ให้ up-to-date กับ develop |
 | `@dependabot recreate` | ปิด PR แล้วสร้างใหม่ทั้งหมด |
 | `@dependabot merge` | Merge PR อัตโนมัติ (ถ้า CI ผ่าน + approved) |
 | `@dependabot squash and merge` | Squash แล้ว merge |
@@ -362,7 +362,7 @@ Dependabot จะไม่สร้าง PR สำหรับ v3 อีก
 **A:** Dependabot PR ไม่ใช่ PR ของเรา — ใครมี access ก็ approve ได้ (ยกเว้น PR ของตัวเอง)
 
 ### Q: Dependabot PR merge เข้า branch ไหน?
-**A:** เข้า branch `dev` (ตั้งค่าใน `target-branch: dev`)
+**A:** เข้า branch `develop` (ตั้งค่าใน `target-branch: develop`)
 
 ### Q: ทำไม PR บางตัวขึ้น "Skipped"?
 **A:** Docker + Image Scan steps ปกติจะ skip ใน PR — ไม่ใช่ปัญหา
@@ -382,14 +382,14 @@ Dependabot จะไม่สร้าง PR สำหรับ v3 อีก
 │                  Dependabot — Quick Reference                │
 │                                                              │
 │  📅 รันเมื่อไหร่?     ทุกวันจันทร์ 09:00                      │
-│  🎯 merge เข้าไหน?    branch dev                              │
+│  🎯 merge เข้าไหน?    branch develop                          │
 │  📦 ตรวจอะไร?         Go modules / Actions / Docker images   │
 │                                                              │
 │  ✅ ขั้นตอนจัดการ PR:                                         │
 │     1. ดู CI  → ผ่าน? ✅                                      │
 │     2. Approve                                               │
 │     3. Squash and Merge                                      │
-│     4. git checkout dev && git pull                          │
+│     4. git checkout develop && git pull                      │
 │                                                              │
 │  ❌ CI fail?                                                  │
 │     → ดู log → แก้ / ปิด PR                                   │
