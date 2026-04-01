@@ -24,8 +24,7 @@
 | [CI Pipeline Stages](cicd/ci-pipeline-stages.md) | รายละเอียด 7 stages ของ CI pipeline |
 | [Workflow Concept](cicd/workflow-concept.md) | อธิบาย push → CI → deploy staging → tag → production |
 | [GitHub Actions Setup](cicd/github-actions-setup.md) | วิธีตั้งค่า GitHub Actions + Secrets |
-| [Dependabot Concept](cicd/dependabot-concept.md) | อธิบาย Dependabot คืออะไร + config |
-| [Dependabot Usage Guide](cicd/dependabot-usage-guide.md) | วิธีจัดการ PR ของ Dependabot (review, approve, merge) |
+| [Dependabot Guide](cicd/dependabot-guide.md) | คู่มือฉบับเต็ม — concept, config, วิธี review + merge PR |
 
 ## Observability — Monitoring & Tracing
 

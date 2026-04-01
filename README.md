@@ -348,7 +348,7 @@ Config: [`.github/dependabot.yml`](.github/dependabot.yml)
 | GitHub Actions | 5 / week | `dependencies`, `ci` |
 | Docker images | 3 / week | `dependencies`, `docker` |
 
-> 📝 รายละเอียด → [Dependabot Concept](documents/cicd/dependabot-concept.md) | 🛠️ วิธีจัดการ PR → [Dependabot Usage Guide](documents/cicd/dependabot-usage-guide.md)
+> 📝 คู่มือฉบับเต็ม → [Dependabot Guide](documents/cicd/dependabot-guide.md)
 
 ---
 
@@ -582,8 +582,7 @@ anc-portal-be/
 | 🔄 | [CI/CD Guide](documents/cicd/ci-cd-guide.md) | Pipeline, GitHub Actions, Local CI |
 | 📋 | [CI Pipeline Stages](documents/cicd/ci-pipeline-stages.md) | 7 stages — Lint, Test, Vuln, Build, Docker, Scan, Notify |
 | 🔀 | [Workflow Concept](documents/cicd/workflow-concept.md) | push → CI → staging → tag → production |
-| 🤖 | [Dependabot](documents/cicd/dependabot-concept.md) | Auto dependency updates config |
-| 🛠️ | [Dependabot Usage](documents/cicd/dependabot-usage-guide.md) | วิธีจัดการ PR ของ Dependabot |
+| 🤖 | [Dependabot Guide](documents/cicd/dependabot-guide.md) | Dependabot คู่มือฉบับเต็ม (config + วิธีใช้) |
 | 📊 | [OTel Tracing](documents/observability/otel-tracing-guide.md) | Distributed tracing, Kafka propagation |
 | ⚡ | [Grafana Quick Start](documents/observability/otel-grafana-quickstart.md) | Observability stack setup (5 นาที) |
 | 🚀 | [Deployment Guide](documents/infrastructure/deployment-guide.md) | Local → Staging → Production |
