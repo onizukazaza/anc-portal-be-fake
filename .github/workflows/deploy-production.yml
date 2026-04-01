@@ -2,8 +2,9 @@
 # CD — Deploy to Production
 # =============================================================================
 # Trigger: push tag v* (เช่น v1.0.0) หรือ manual dispatch
-# Guard:   environment "production" ต้อง manual approval ใน GitHub Settings
-# Flow:    migrate job → deploy API + Worker → verify rollout → verify pods
+# Guard:   1) vars.DEPLOY_PRODUCTION_ENABLED ต้องเป็น 'true'
+#          2) environment "production" ต้อง manual approval ใน GitHub Settings
+# Flow:    gate → migrate → deploy API + Worker → verify rollout → verify pods
 # =============================================================================
 name: Deploy Production
 
@@ -31,8 +32,29 @@ env:
   WORKER_IMAGE: ghcr.io/${{ github.repository }}-worker
 
 jobs:
+  # ─── Gate: ตรวจว่าเปิดสวิตช์ deploy ไว้หรือไม่ ───
+  gate:
+    name: Check deploy switch
+    runs-on: ubuntu-latest
+    outputs:
+      enabled: ${{ steps.check.outputs.enabled }}
+    steps:
+      - name: Check DEPLOY_PRODUCTION_ENABLED
+        id: check
+        run: |
+          ENABLED="${{ vars.DEPLOY_PRODUCTION_ENABLED }}"
+          if [ "$ENABLED" = "true" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+            echo "✅ Deploy production is ENABLED"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "⏭ Deploy production is DISABLED (set DEPLOY_PRODUCTION_ENABLED=true to enable)"
+          fi
+
   deploy:
     name: Deploy to Production
+    needs: gate
+    if: ${{ needs.gate.outputs.enabled == 'true' }}
     runs-on: ubuntu-latest
     env:
       DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}

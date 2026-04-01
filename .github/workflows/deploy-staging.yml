@@ -2,6 +2,7 @@
 # CD — Deploy to Staging
 # =============================================================================
 # Trigger: push ไป develop (หลัง CI ผ่าน) หรือ manual dispatch
+# Guard:   vars.DEPLOY_STAGING_ENABLED ต้องเป็น 'true' (ตั้งใน GitHub Settings)
 # Flow:    migrate job → deploy API + Worker → verify rollout → smoke test
 # =============================================================================
 name: Deploy Staging
@@ -27,13 +28,34 @@ env:
   WORKER_IMAGE: ghcr.io/${{ github.repository }}-worker
 
 jobs:
+  # ─── Gate: ตรวจว่าเปิดสวิตช์ deploy ไว้หรือไม่ ───
+  gate:
+    name: Check deploy switch
+    runs-on: ubuntu-latest
+    # รันเฉพาะเมื่อ CI สำเร็จ (หรือ manual dispatch)
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    outputs:
+      enabled: ${{ steps.check.outputs.enabled }}
+    steps:
+      - name: Check DEPLOY_STAGING_ENABLED
+        id: check
+        run: |
+          ENABLED="${{ vars.DEPLOY_STAGING_ENABLED }}"
+          if [ "$ENABLED" = "true" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+            echo "✅ Deploy staging is ENABLED"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "⏭ Deploy staging is DISABLED (set DEPLOY_STAGING_ENABLED=true to enable)"
+          fi
+
   deploy:
     name: Deploy to Staging
+    needs: gate
+    if: ${{ needs.gate.outputs.enabled == 'true' }}
     runs-on: ubuntu-latest
     env:
       DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-    # รันเฉพาะเมื่อ CI สำเร็จ (หรือ manual dispatch)
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     environment:
       name: staging
       url: https://api-staging.anc-portal.example.com/healthz
