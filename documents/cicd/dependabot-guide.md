@@ -1,525 +1,420 @@
-# Dependabot — คู่มือฉบับเต็ม
+# Dependabot — คู่มือฉบับสมบูรณ์
 
-> อ่านจบ → เข้าใจ + ใช้งานได้ทันที
->
-> Config: [`.github/dependabot.yml`](../../.github/dependabot.yml)
+> ทุกอย่างเกี่ยวกับ Dependabot ในโปรเจกต์นี้ — ตั้งแต่มันคืออะไร ทำงานยังไง ไปจนถึงวิธีจัดการ PR
 
 ---
 
 ## สารบัญ
 
-| ส่วน | เนื้อหา |
-|------|---------|
-| [1. Dependabot คืออะไร](#1-dependabot-คืออะไร) | อธิบายภาพรวม |
-| [2. ทำไมต้องมี](#2-ทำไมต้องมี) | ปัญหาที่แก้ได้ |
-| [3. Config ของโปรเจกต์นี้](#3-config-ของโปรเจกต์นี้) | ตรวจอะไร เมื่อไหร่ |
-| [4. Flow การทำงาน](#4-flow-การทำงาน) | ตั้งแต่ scan จนถึง merge |
-| [5. เมื่อ Dependabot สร้าง PR — ทำอะไร?](#5-เมื่อ-dependabot-สร้าง-pr--ทำอะไร) | ขั้นตอน review + merge |
-| [6. Checkout ทดสอบบนเครื่อง](#6-checkout-ทดสอบบนเครื่อง) | ดึงโค้ดมาลองรัน |
-| [7. กรณี CI Failed](#7-กรณี-ci-failed) | แก้ปัญหา |
-| [8. PR หลายตัว — Merge ยังไง](#8-pr-หลายตัว--merge-ยังไง) | ลำดับการ merge |
-| [9. Dependabot Commands](#9-dependabot-commands) | สั่ง bot ผ่าน comment |
-| [10. Config อธิบายทีละบรรทัด](#10-config-อธิบายทีละบรรทัด) | อ่าน YAML ได้ |
-| [11. Cheatsheet](#11-cheatsheet) | สรุปทุกอย่างในหน้าเดียว |
+- [Part 1: Dependabot คืออะไร](#part-1-dependabot-คืออะไร)
+- [Part 2: Config ของโปรเจกต์นี้](#part-2-config-ของโปรเจกต์นี้)
+- [Part 3: วิธีจัดการ PR ของ Dependabot](#part-3-วิธีจัดการ-pr-ของ-dependabot)
+- [Part 4: สถานการณ์พิเศษ](#part-4-สถานการณ์พิเศษ)
+- [Part 5: Dependabot Commands](#part-5-dependabot-commands)
+- [Part 6: FAQ — คำถามที่พบบ่อย](#part-6-faq--คำถามที่พบบ่อย)
+- [Cheatsheet](#cheatsheet)
 
 ---
 
-## 1. Dependabot คืออะไร
+## Part 1: Dependabot คืออะไร
 
-**Dependabot** = บอทของ GitHub ที่ตรวจ dependency อัตโนมัติ
+### อธิบายง่าย ๆ
+
+**Dependabot = พนักงานตรวจสต๊อกอัตโนมัติ**
 
 ```
-นึกภาพแบบนี้:
+ทุกสัปดาห์ Dependabot จะเข้ามาดูว่า:
+  - Library ที่ใช้อยู่ มี version ใหม่ไหม?
+  - Docker image ที่ใช้อยู่ เก่าไปหรือยัง?
+  - GitHub Actions version ล้าสมัยไหม?
 
-Dependabot = พนักงานตรวจสต๊อก
-
-ทุกสัปดาห์จะเข้ามาเช็ค:
-  "library ตัวไหนมี version ใหม่บ้าง?"
-  "Docker image ตัวไหนเก่าแล้ว?"
-
-ถ้าเจอ → เขียนใบเสนอ (Pull Request) ให้อนุมัติ
+ถ้าเจอของใหม่ → สร้าง Pull Request ให้อัตโนมัติ
+เราแค่ review แล้ว merge ได้เลย
 ```
 
-**สิ่งที่ Dependabot ทำให้:**
-- ✅ ตรวจ dependency ทุกสัปดาห์ → ไม่ต้องเช็คเอง
-- ✅ สร้าง PR อัตโนมัติ → พร้อม merge เลย
-- ✅ CI รัน test ให้ทันที → รู้เลยว่า version ใหม่พังไหม
-- ✅ แจ้งเตือนช่องโหว่ (CVE) → ปลอดภัยขึ้น
+### ทำไมต้องมี?
 
-**สิ่งที่ Dependabot ทำไม่ได้:**
-- ❌ merge เองไม่ได้ → ต้องมีคน approve + กด merge
-- ❌ แก้โค้ดให้ไม่ได้ → ถ้า update พังต้องแก้เอง
+| ถ้าไม่มี Dependabot | ถ้ามี Dependabot |
+|---------------------|------------------|
+| ต้องเข้าไปเช็ค version เอง | ตรวจให้ทุกสัปดาห์อัตโนมัติ |
+| มีช่องโหว่ (CVE) ก็ไม่รู้ | แจ้งเตือน + สร้าง PR แก้ให้ทันที |
+| ปล่อยนาน อัพทีเดียวพังหมด | ค่อย ๆ อัพทีละตัว รู้ทันทีว่าตัวไหนพัง |
+| ต้อง test เอง | CI รันให้อัตโนมัติใน PR |
+
+### Flow ภาพรวมของ Dependabot
+
+```
+  ┌─────────────────────────────────────────────────────┐
+  │           Dependabot ทำงานอัตโนมัติ                  │
+  │                                                     │
+  │   ทุกวันจันทร์ 09:00 (Asia/Bangkok)                  │
+  │         │                                           │
+  │         ▼                                           │
+  │   ┌───────────────────────────────────┐             │
+  │   │  สแกน 3 ระบบ:                     │             │
+  │   │   📦 Go modules    (go.mod)       │             │
+  │   │   ⚙️ GitHub Actions (workflows/)  │             │
+  │   │   🐳 Docker images (Dockerfile)   │             │
+  │   └──────────────┬────────────────────┘             │
+  │                  │                                  │
+  │            มี version ใหม่?                          │
+  │            ├── ❌ ไม่มี → จบ (ไม่ทำอะไร)             │
+  │            └── ✅ มี → สร้าง PR อัตโนมัติ            │
+  │                        │                            │
+  │                        ▼                            │
+  │              ┌──────────────────┐                   │
+  │              │    Pull Request  │                   │
+  │              │  - title ชัดเจน  │                   │
+  │              │  - label ติดให้   │                   │
+  │              │  - changelog     │                   │
+  │              └────────┬─────────┘                   │
+  │                       │                             │
+  │                       ▼                             │
+  │              CI รัน (lint, test, build)              │
+  │                       │                             │
+  │                  ผ่านไหม?                            │
+  │                  ├── ✅ → รอเรา Approve + Merge      │
+  │                  └── ❌ → ต้องดู log แก้ไข           │
+  └─────────────────────────────────────────────────────┘
+```
+
+**สิ่งที่ Dependabot ทำให้:** สร้าง PR + รัน CI
+
+**สิ่งที่เราต้องทำเอง:** Review + Approve + Merge
 
 ---
 
-## 2. ทำไมต้องมี
+## Part 2: Config ของโปรเจกต์นี้
 
-### ถ้าไม่มี Dependabot
+ไฟล์: [`.github/dependabot.yml`](../../.github/dependabot.yml)
 
-| ปัญหา | ผลกระทบ |
-|--------|---------|
-| Library มีช่องโหว่ แต่ไม่รู้ | โดน hack / ข้อมูลรั่ว |
-| ไม่อัปเดตนาน แล้วอัปทีเดียว | แก้ breaking changes ยากมาก |
-| ต้องเข้า GitHub / changelog เช็คเอง | เสียเวลา ลืมง่าย |
-| Docker image เก่า | มี CVE สะสม |
+### สรุป Config
 
-### ถ้ามี Dependabot
+| ระบบ | ตรวจอะไร | ไฟล์ที่แก้ | PR สูงสุด | Labels |
+|------|---------|-----------|----------|--------|
+| **Go modules** | Library ใน `go.mod` | `go.mod`, `go.sum` | 5 ตัว/สัปดาห์ | `dependencies`, `go` |
+| **GitHub Actions** | Actions ใน workflows | `.github/workflows/*.yml` | 5 ตัว/สัปดาห์ | `dependencies`, `ci` |
+| **Docker images** | Base image ใน Dockerfile | `Dockerfile`, `Dockerfile.worker` | 3 ตัว/สัปดาห์ | `dependencies`, `docker` |
 
-| ข้อดี | รายละเอียด |
-|-------|-----------|
-| **อัตโนมัติ** | ตรวจทุกสัปดาห์ ไม่ต้องเช็คเอง |
-| **ทีละนิด** | PR ละ 1 dependency → ถ้าพังก็รู้ว่าตัวไหน |
-| **ปลอดภัย** | แจ้ง CVE + สร้าง PR แก้ช่องโหว่ทันที |
-| **ฟรี** | เป็น feature ของ GitHub ไม่มีค่าใช้จ่าย |
-
----
-
-## 3. Config ของโปรเจกต์นี้
-
-Dependabot ตรวจ **3 สิ่ง** ในโปรเจกต์นี้:
-
-| # | ตรวจอะไร | ไฟล์ที่ดู | ตัวอย่าง PR |
-|---|---------|----------|------------|
-| 1 | **Go modules** | `go.mod` | bump zerolog from 1.34.0 to 1.35.0 |
-| 2 | **GitHub Actions** | `.github/workflows/*.yml` | bump actions/checkout from v4 to v5 |
-| 3 | **Docker images** | `Dockerfile`, `Dockerfile.worker` | bump golang from 1.25-alpine to 1.26-alpine |
-
-### เมื่อไหร่
+### ตารางเวลา
 
 ```
 ทุกวันจันทร์ 09:00 น. (เวลาไทย)
 ```
 
-### จำกัด PR
-
-| ประเภท | เปิดพร้อมกันได้สูงสุด |
-|--------|---------------------|
-| Go modules | 5 PRs |
-| GitHub Actions | 5 PRs |
-| Docker images | 3 PRs |
-
 ### Target Branch
 
 ```
-PR ทั้งหมดชี้ไปที่ branch: dev
+Dependabot → สร้าง PR → merge เข้า branch "dev"
+```
+
+> หมายเหตุ: ตั้งค่าเป็น `target-branch: dev` เพื่อให้ merge เข้า dev ก่อนแล้วค่อย merge dev เข้า main
+
+### Commit Message Format
+
+| ระบบ | ตัวอย่าง commit message |
+|------|------------------------|
+| Go | `deps(go.mod): bump github.com/rs/zerolog from 1.34.0 to 1.35.0` |
+| Actions | `ci(actions): bump actions/checkout from v4 to v5` |
+| Docker | `docker(deployments/docker): bump golang from 1.25-alpine to 1.26-alpine` |
+
+---
+
+## Part 3: วิธีจัดการ PR ของ Dependabot
+
+### ขั้นตอนหลัก (3 ขั้นตอน)
+
+```
+  ┌──────────────────────────────────────────┐
+  │  ขั้นตอนที่ 1:  ดู CI ผ่านไหม?           │
+  │       ↓                                  │
+  │  ขั้นตอนที่ 2:  Approve                   │
+  │       ↓                                  │
+  │  ขั้นตอนที่ 3:  Merge                     │
+  │       ↓                                  │
+  │  เสร็จ! ✅                                │
+  └──────────────────────────────────────────┘
 ```
 
 ---
 
-## 4. Flow การทำงาน
+### ขั้นตอนที่ 1: ดู CI ผ่านไหม
+
+#### เปิดดู PR ใน VS Code
+
+1. Sidebar ซ้าย → ไอคอน **GitHub Pull Requests**
+2. หมวด **All Open** → คลิก PR ของ Dependabot
+3. หน้า PR เปิดทางขวา → เลื่อนลงดู **Checks**
+
+#### อ่าน CI Results
 
 ```
-ทุกวันจันทร์ 09:00 น.
-        │
-        ▼
-┌───────────────────────────────┐
-│    Dependabot scan            │
-│                               │
-│    📦 go.mod    → มี update?  │
-│    ⚙️ workflows → มี update?  │
-│    🐳 Dockerfile → มี update? │
-└───────────┬───────────────────┘
-            │
-       มี version ใหม่?
-            │
-    ┌───────┴───────┐
-    │               │
-  ไม่มี           มี!
-  (จบ)             │
-                   ▼
-          ┌─────────────────┐
-          │  สร้าง PR       │
-          │  - title ชัดเจน │
-          │  - label ติดให้  │
-          │  - changelog    │
-          └────────┬────────┘
-                   │
-                   ▼
-          ┌─────────────────┐
-          │  CI รันอัตโนมัติ │
-          │  Lint ✅         │
-          │  Test ✅         │
-          │  Build ✅        │
-          │  Vuln Check ✅   │
-          └────────┬────────┘
-                   │
-              CI ผ่าน?
-                   │
-           ┌───────┴───────┐
-           │               │
-          ผ่าน           ไม่ผ่าน
-           │               │
-           ▼               ▼
-     รอคุณ Review    ดู error log
-     + Approve       → แก้ / ปิด PR
-     + Merge
-           │
-           ▼
-     merge เข้า dev ✅
+✅ Lint          ผ่าน     → code style OK
+✅ Test          ผ่าน     → unit tests ผ่าน
+✅ Vuln Check    ผ่าน     → ไม่มีช่องโหว่
+✅ Build         ผ่าน     → compile ได้
+⏭ Docker        ข้าม     → ปกติสำหรับ PR
+⏭ Image Scan    ข้าม     → ปกติสำหรับ PR
+✅ Notify        ผ่าน     → แจ้ง Discord แล้ว
 ```
+
+#### ตัดสินใจ
+
+| สถานะ | ไอคอน | ทำอะไรต่อ |
+|-------|-------|----------|
+| ผ่านทั้งหมด | ✅ เขียว | → ไป Approve เลย |
+| กำลังรัน | 🟡 เหลือง | → รอให้เสร็จก่อน |
+| มี Failed | ❌ แดง | → [ดูหัวข้อ CI Failed](#กรณี-ci-failed) |
 
 ---
 
-## 5. เมื่อ Dependabot สร้าง PR — ทำอะไร?
+### ขั้นตอนที่ 2: Approve
 
-### 5 ขั้นตอน ง่าย ๆ
+> Approve = อนุมัติว่าโค้ดนี้ OK พร้อม merge
 
-```
-ขั้นที่ 1:  เปิดดู PR
-ขั้นที่ 2:  ดู CI → ผ่าน ✅ ?
-ขั้นที่ 3:  ดูไฟล์ที่เปลี่ยน (ถ้าอยากรู้)
-ขั้นที่ 4:  กด Approve
-ขั้นที่ 5:  กด Merge
-```
+#### วิธี Approve ใน VS Code
 
----
+1. เปิดหน้า PR → เลื่อนลง
+2. ใต้กล่อง comment → เลือก **Approve** จาก dropdown
+3. กด **Submit**
 
-### ขั้นที่ 1: เปิดดู PR
+#### วิธี Approve บน GitHub.com
 
-**ใน VS Code:**
-
-```
-sidebar ซ้าย → ไอคอน GitHub Pull Requests
-  └── All Open
-      └── deps(deps): bump zerolog from 1.34.0 to 1.35.0  ← คลิกที่นี่
-```
-
-**บน GitHub.com:**
-
-```
-เปิด repository → แท็บ Pull requests → จะเห็น PR มี label "dependencies"
-```
+1. เปิด PR → แท็บ **Files changed**
+2. มุมขวาบน → กดปุ่มเขียว **Review changes**
+3. เลือก **Approve** → กด **Submit review**
 
 ---
 
-### ขั้นที่ 2: ดู CI Checks
+### ขั้นตอนที่ 3: Merge
 
-เลื่อนลงในหน้า PR → ดูส่วน Checks:
+> Merge = รวมโค้ดเข้า branch dev
 
-| สถานะ | ไอคอน | ความหมาย | ทำอะไรต่อ |
-|-------|-------|---------|----------|
-| ✅ Passed | เขียว | ผ่าน | ไป Approve ได้เลย |
-| ❌ Failed | แดง | พัง | [ดูหัวข้อ CI Failed](#7-กรณี-ci-failed) |
-| 🟡 Pending | เหลือง | กำลังรัน | รอ |
-| ⏭ Skipped | เทา | ข้าม (ปกติ) | ไม่ต้องสนใจ |
+#### วิธี Merge ใน VS Code
 
-**ตัวอย่างที่เห็น:**
+1. เปิดหน้า PR → เลื่อนลงล่างสุด
+2. กดปุ่ม **Merge Pull Request**
+3. (แนะนำ) กด ▼ เลือก **Squash and Merge** → commit message สะอาด
+4. กด Confirm
 
-```
-✅ Lint          ผ่าน
-✅ Test          ผ่าน
-✅ Vuln Check    ผ่าน
-✅ Build         ผ่าน
-⏭ Docker        ข้าม (ปกติสำหรับ PR)
-⏭ Image Scan    ข้าม
-✅ Notify        ผ่าน
+#### วิธี Merge บน GitHub.com
 
-→ ทุกอย่างผ่าน ✅ → ไป Approve ได้เลย
-```
+1. เลื่อนลงล่างสุดในหน้า PR
+2. กด ▼ เลือก **Squash and merge**
+3. แก้ commit message ถ้าต้องการ → กด **Confirm squash and merge**
 
----
-
-### ขั้นที่ 3: ดู Files Changed (ไม่จำเป็น แต่แนะนำ)
-
-**ใน VS Code:** คลิก expand PR → คลิกที่ไฟล์ → เห็น diff (เทียบก่อน/หลัง)
-
-| ประเภท PR | ไฟล์ที่แก้ | สิ่งที่เห็น |
-|-----------|-----------|-----------|
-| Go module | `go.mod`, `go.sum` | version เปลี่ยน |
-| Docker | `Dockerfile` | base image version เปลี่ยน |
-| Actions | `*.yml` | action version เปลี่ยน |
-
-**ตัวอย่าง diff ของ go.mod:**
-
-```diff
-- github.com/rs/zerolog v1.34.0
-+ github.com/rs/zerolog v1.35.0
-```
-
-> แค่เลข version เปลี่ยน → ปลอดภัย
-
----
-
-### ขั้นที่ 4: Approve
-
-**ใน VS Code:**
-
-```
-เปิดหน้า PR → เลื่อนลง → ใต้กล่อง comment
-→ เลือก "Approve" จาก dropdown
-→ กด Submit
-```
-
-**บน GitHub.com:**
-
-```
-เปิด PR → แท็บ "Files changed"
-→ กดปุ่มเขียว "Review changes" (มุมขวาบน)
-→ เลือก "Approve"
-→ กด "Submit review"
-```
-
-**3 ตัวเลือกที่เห็น:**
-
-| ปุ่ม | ใช้เมื่อ |
-|------|---------|
-| **Comment** | อยากบอกอะไร แต่ไม่ตัดสินใจ |
-| **Approve** ✅ | โค้ด OK → กดอันนี้ |
-| **Request Changes** ❌ | ต้องแก้ก่อน (ไม่ค่อยใช้กับ Dependabot) |
-
----
-
-### ขั้นที่ 5: Merge
-
-**ใน VS Code:**
-
-```
-เปิดหน้า PR → เลื่อนลงล่างสุด
-→ กดปุ่ม "Merge Pull Request"
-→ (หรือกด ▼ เลือก "Squash and Merge")
-→ กด Confirm
-```
-
-**บน GitHub.com:**
-
-```
-เลื่อนลงล่างสุด → กด "Squash and merge" → กด Confirm
-```
-
-**3 วิธี Merge:**
-
-| วิธี | ผลลัพธ์ | แนะนำ |
-|------|---------|-------|
-| Merge commit | รวมทุก commit | |
-| **Squash and merge** | รวมเป็น 1 commit | ✅ แนะนำ |
-| Rebase and merge | วาง commit ต่อท้าย | |
-
----
-
-### หลัง Merge เสร็จ
+#### หลัง Merge
 
 ```powershell
-# ดึงโค้ดใหม่มาเครื่อง
+# ดึงโค้ดล่าสุดมาเครื่อง
 git checkout dev
 git pull
-
-# (ถ้าอยู่ branch อื่น)
-git checkout dev
 ```
 
 > Branch ของ Dependabot จะถูกลบอัตโนมัติหลัง merge
 
 ---
 
-## 6. Checkout ทดสอบบนเครื่อง
+### Checkout ทดสอบ (ไม่จำเป็นเสมอ)
 
-> **ไม่จำเป็นเสมอ** — ใช้เมื่อไม่มั่นใจ หรือเป็น major version bump
+> ⚡ ถ้า CI ผ่านและเป็นแค่ patch/minor → ข้ามขั้นตอนนี้ Approve ได้เลย
 
-### เมื่อไหร่ควร Checkout
+#### ควร Checkout เมื่อ
 
-| สถานการณ์ | ควร Checkout? |
-|-----------|-------------|
-| Patch bump (1.34.0 → 1.34.1) | ❌ ไม่จำเป็น |
-| Minor bump (1.34.0 → 1.35.0) | ⚠️ ถ้าไม่มั่นใจ |
-| Major bump (v1 → v2) | ✅ ควรทำ |
-| Docker image bump | ⚠️ ถ้า Go version เปลี่ยน |
-| CI ผ่านทุกอย่าง | ❌ ไม่จำเป็น |
+- Major version bump (v1 → v2)
+- Dependency หลัก ๆ (Go version, Fiber, pgx)
+- CI ผ่านแต่ยังไม่มั่นใจ
 
-### วิธี Checkout
+#### วิธี Checkout
 
-**ใน VS Code:**
+**VS Code:** กดปุ่ม **Checkout** (ลูกศร →) ข้าง PR ใน sidebar
 
-```
-sidebar ซ้าย → GitHub Pull Requests → คลิก PR → กดปุ่ม Checkout (ลูกศร →)
-→ VS Code สลับ branch ให้อัตโนมัติ
-```
-
-**ใน Terminal:**
-
+**Terminal:**
 ```powershell
-# ดึง branch ล่าสุด
 git fetch
-
-# สลับไป branch ของ PR
 git checkout dependabot/go_modules/github.com/rs/zerolog-1.35.0
 
 # ทดสอบ
-go build ./...       # build ผ่านไหม
-go test ./...        # test ผ่านไหม
-.\run.ps1 dev        # รันจริงลองดู (optional)
+go build ./...
+go test ./...
 
-# กลับ dev เมื่อเสร็จ
+# กลับ dev
 git checkout dev
 ```
 
 ---
 
-## 7. กรณี CI Failed
+## Part 4: สถานการณ์พิเศษ
 
-### ดูว่าพังตรงไหน
-
-```
-ใน PR → กด "Details" / "Show" ข้าง check ที่ fail
-→ อ่าน error log
-```
-
-### แก้ตามกรณี
+### กรณี CI Failed
 
 ```
 CI Failed
-    │
-    ├── Test fail?
-    │    → version ใหม่มี breaking change
-    │    → checkout มาแก้โค้ดให้ compatible → push
-    │
-    ├── Lint fail?
-    │    → API เปลี่ยน format
-    │    → ส่วนใหญ่แก้ง่าย
-    │
-    ├── Build fail?
-    │    → version ใหม่ไม่ compatible
-    │    → อาจต้องรอ fix หรือปิด PR
-    │
-    └── ไม่แน่ใจ?
-         → comment ใน PR ถามทีม
-         → หรือปิด PR → Dependabot สร้างใหม่สัปดาห์หน้า
+   │
+   ├── กด "Details" / "Show" ดู log
+   │
+   ├── Test Failed?
+   │    → version ใหม่มี breaking change
+   │    → ต้อง checkout มาแก้โค้ดให้ compatible
+   │    → push → CI รันใหม่อัตโนมัติ
+   │
+   ├── Lint Failed?
+   │    → อาจมี API เปลี่ยน format
+   │    → ส่วนใหญ่แก้ง่าย
+   │
+   ├── Build Failed?
+   │    → version ใหม่ไม่ compatible กับ Go/Docker
+   │    → ปิด PR ไปก่อน (Dependabot สร้างใหม่สัปดาห์ถัดไป)
+   │
+   └── ไม่แน่ใจ?
+        → Comment ใน PR ถามทีม
+        → หรือปิด PR ไว้ก่อน
 ```
 
-### ปิด PR (ถ้าไม่ต้องการ)
+### PR หลายตัวพร้อมกัน — merge ลำดับไหน
 
-- VS Code: เปิด PR → กด **Close**
-- GitHub: กด **Close pull request**
-- Comment: `@dependabot close`
+```
+กฎง่าย ๆ:
+
+1. แก้คนละไฟล์ → merge ลำดับไหนก็ได้
+2. แก้ไฟล์เดียวกัน → merge ทีละตัว (Dependabot จะ rebase ให้)
+```
+
+#### ตัวอย่างลำดับ merge
+
+```
+PR #1: bump zerolog     (แก้ go.mod)        ← merge ก่อน
+PR #2: bump validator   (แก้ go.mod)        ← merge ทีหลัง
+PR #3: bump golang      (แก้ Dockerfile)    ← merge เมื่อไหร่ก็ได้
+PR #4: bump alpine      (แก้ Dockerfile)    ← merge หลัง #3
+```
+
+#### ถ้าเกิด Conflict
+
+Dependabot จะ rebase ให้อัตโนมัติหลัง PR อื่น merge แล้ว
+
+ถ้าไม่ rebase เอง → comment ใน PR: `@dependabot rebase`
+
+### Major Version Bump — ต้องระวัง
+
+```
+⚠️ สัญญาณว่าต้องระวัง:
+
+  - Title มีคำว่า "v1 to v2" หรือ "1.x to 2.x"
+  - CI Failed
+  - Dependabot เขียนว่ามี "Breaking changes"
+
+วิธีจัดการ:
+  1. Checkout มาทดสอบจริงบนเครื่อง
+  2. อ่าน changelog / release notes
+  3. แก้โค้ดถ้ามี breaking change
+  4. ถ้ายังไม่พร้อม → ปิด PR ไว้ก่อน
+```
+
+### ปิด PR ที่ไม่ต้องการ
+
+- **VS Code:** เปิด PR → กด **Close** ด้านล่าง
+- **GitHub:** กด **Close pull request**
+
+> Dependabot จะสร้าง PR ใหม่ในรอบถัดไปถ้ายังมี version ใหม่กว่า
 
 ---
 
-## 8. PR หลายตัว — Merge ยังไง
-
-### กฎง่าย ๆ
-
-```
-✅ PR ที่แก้คนละไฟล์ → merge ลำดับไหนก็ได้
-⚠️ PR ที่แก้ไฟล์เดียวกัน → merge ทีละตัว
-```
-
-### ตัวอย่าง
-
-```
-PR #1: bump zerolog      (แก้ go.mod)      ← merge ก่อน
-PR #2: bump validator    (แก้ go.mod)      ← merge ทีหลัง (รอ rebase)
-PR #3: bump golang image (แก้ Dockerfile)  ← merge เมื่อไหร่ก็ได้
-PR #4: bump alpine image (แก้ Dockerfile)  ← merge หลัง #3
-
-ลำดับแนะนำ: #1 → #3 → #2 → #4
-(สลับไฟล์ที่แก้ ไม่ต้องรอ rebase)
-```
-
-### ถ้าเกิด Conflict
-
-Dependabot จะ **rebase ให้อัตโนมัติ** หลัง PR อื่น merge
-
-ถ้าไม่ rebase → comment ใน PR: `@dependabot rebase`
-
----
-
-## 9. Dependabot Commands
+## Part 5: Dependabot Commands
 
 comment ใน PR เพื่อสั่ง Dependabot:
 
 | Command | ทำอะไร |
 |---------|--------|
-| `@dependabot rebase` | Rebase branch ให้ up-to-date |
-| `@dependabot recreate` | ปิด PR แล้วสร้างใหม่ |
-| `@dependabot merge` | Merge (ถ้า CI ผ่าน + approved) |
+| `@dependabot rebase` | Rebase branch ให้ up-to-date กับ dev |
+| `@dependabot recreate` | ปิด PR แล้วสร้างใหม่ทั้งหมด |
+| `@dependabot merge` | Merge PR อัตโนมัติ (ถ้า CI ผ่าน + approved) |
 | `@dependabot squash and merge` | Squash แล้ว merge |
 | `@dependabot cancel merge` | ยกเลิก auto-merge |
 | `@dependabot close` | ปิด PR |
-| `@dependabot ignore this dependency` | ไม่ track dependency นี้อีก |
+| `@dependabot ignore this dependency` | ไม่ track dependency นี้อีกต่อไป |
 | `@dependabot ignore this major version` | ข้าม major version นี้ |
+| `@dependabot ignore this minor version` | ข้าม minor version นี้ |
 
-### ตัวอย่างการใช้
+#### ตัวอย่างการใช้
 
 ```
-สถานการณ์: PR #3 conflict กับ PR #1 ที่เพิ่ง merge
+สมมติ Dependabot สร้าง PR bump library X จาก v2 เป็น v3
+แต่เรายังไม่พร้อมอัพ v3:
 
-คุณ: comment ใน PR #3 ว่า "@dependabot rebase"
-Bot: rebase branch ให้ → conflict หายไป → CI รันใหม่
+→ Comment: @dependabot ignore this major version
+
+Dependabot จะไม่สร้าง PR สำหรับ v3 อีก
+แต่ยังอัพ v2.x.x ให้ตามปกติ
 ```
 
 ---
 
-## 10. Config อธิบายทีละบรรทัด
+## Part 6: FAQ — คำถามที่พบบ่อย
 
-```yaml
-version: 2                          # Dependabot config version
+### Q: Dependabot สร้าง PR ตอนไหน?
+**A:** ทุกวันจันทร์ 09:00 น. (เวลาไทย) หรือเมื่อตรวจพบ security vulnerability
 
-updates:
-  - package-ecosystem: gomod        # ตรวจ Go modules (go.mod)
-    directory: /                    # อยู่ root ของโปรเจกต์
-    target-branch: dev              # สร้าง PR ชี้ไปที่ branch dev
-    schedule:
-      interval: weekly              # ตรวจทุกสัปดาห์
-      day: monday                   # วันจันทร์
-      time: "09:00"                 # 09:00 น.
-      timezone: Asia/Bangkok        # เวลาไทย
-    open-pull-requests-limit: 5     # เปิด PR พร้อมกันได้สูงสุด 5
-    labels:                         # ติด label อัตโนมัติ
-      - dependencies
-      - go
-    commit-message:                 # รูปแบบ commit message
-      prefix: "deps"               # deps(scope): bump xxx
-      include: scope
-```
+### Q: ถ้า merge แล้วพัง ทำไง?
+**A:** `git revert <commit>` เพื่อย้อนกลับ → หรือปิด PR แล้วให้ Dependabot สร้างใหม่สัปดาห์ถัดไป
 
-### ค่าที่ปรับได้
+### Q: Approve ตัวเอง PR ตัวเองได้ไหม?
+**A:** Dependabot PR ไม่ใช่ PR ของเรา — ใครมี access ก็ approve ได้ (ยกเว้น PR ของตัวเอง)
 
-| ค่า | ตัวเลือก | แนะนำ |
-|-----|---------|-------|
-| `interval` | `daily` / `weekly` / `monthly` | `weekly` ✅ |
-| `day` | `monday` - `sunday` | `monday` |
-| `open-pull-requests-limit` | 1-99 | 3-5 |
-| `target-branch` | ชื่อ branch | `dev` |
+### Q: Dependabot PR merge เข้า branch ไหน?
+**A:** เข้า branch `dev` (ตั้งค่าใน `target-branch: dev`)
+
+### Q: ทำไม PR บางตัวขึ้น "Skipped"?
+**A:** Docker + Image Scan steps ปกติจะ skip ใน PR — ไม่ใช่ปัญหา
+
+### Q: Label มีไว้ทำอะไร?
+**A:** ใช้ filter PR ตามประเภท เช่น ดูเฉพาะ `go` หรือเฉพาะ `docker`
+
+### Q: Dependabot ฟรีไหม?
+**A:** ฟรี — เป็นฟีเจอร์ในตัวของ GitHub ไม่มีค่าใช้จ่าย
 
 ---
 
-## 11. Cheatsheet
-
-### เมื่อเห็น Dependabot PR → ทำ 3 สิ่ง
+## Cheatsheet
 
 ```
-┌──────────────────────────────────────────┐
-│                                          │
-│   1. ดู CI  →  ผ่าน ✅ ?                  │
-│   2. กด Approve                          │
-│   3. กด Merge (Squash and merge)         │
-│                                          │
-│   เสร็จ! 🎉                              │
-│                                          │
-└──────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│                  Dependabot — Quick Reference                │
+│                                                              │
+│  📅 รันเมื่อไหร่?     ทุกวันจันทร์ 09:00                      │
+│  🎯 merge เข้าไหน?    branch dev                              │
+│  📦 ตรวจอะไร?         Go modules / Actions / Docker images   │
+│                                                              │
+│  ✅ ขั้นตอนจัดการ PR:                                         │
+│     1. ดู CI  → ผ่าน? ✅                                      │
+│     2. Approve                                               │
+│     3. Squash and Merge                                      │
+│     4. git checkout dev && git pull                          │
+│                                                              │
+│  ❌ CI fail?                                                  │
+│     → ดู log → แก้ / ปิด PR                                   │
+│                                                              │
+│  🔀 หลาย PR?                                                 │
+│     → merge ทีละตัว → Dependabot rebase ให้เอง               │
+│                                                              │
+│  💬 สั่ง Dependabot:                                          │
+│     @dependabot rebase          → rebase branch              │
+│     @dependabot squash and merge → merge ให้                 │
+│     @dependabot close           → ปิด PR                     │
+│     @dependabot ignore this major version → ข้าม major       │
+│                                                              │
+│  📁 Config:  .github/dependabot.yml                          │
+└──────────────────────────────────────────────────────────────┘
 ```
 
-### กรณีพิเศษ
+---
 
-```
-CI fail?      → ดู log → แก้โค้ด หรือ ปิด PR
-หลาย PR?      → merge ทีละตัว (สลับไฟล์ที่แก้)
-Conflict?     → comment: @dependabot rebase
-ไม่ต้องการ?   → comment: @dependabot close
-Major bump?   → checkout มาทดสอบก่อน
-```
+## ไฟล์ที่เกี่ยวข้อง
 
-### หลัง Merge
-
-```powershell
-git checkout dev
-git pull
-```
-
-### Flow ปัจจุบันของโปรเจกต์
-
-```
-Dependabot ──── PR ──── merge เข้า dev ──── (review) ──── merge เข้า main
-                                  ▲
-                                  │
-                          คุณอยู่ตรงนี้
-```
+| ไฟล์ | หน้าที่ |
+|------|---------|
+| `.github/dependabot.yml` | Config ของ Dependabot |
+| `.github/workflows/ci.yml` | CI pipeline ที่รันเมื่อ Dependabot เปิด PR |
+| `go.mod` / `go.sum` | Go dependencies ที่ Dependabot ตรวจ |
+| `deployments/docker/Dockerfile` | Docker base images ที่ Dependabot ตรวจ |
+| `deployments/docker/Dockerfile.worker` | Docker base images (worker) |
