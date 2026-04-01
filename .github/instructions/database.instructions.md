@@ -1,6 +1,6 @@
 ---
 description: "Use when writing database queries, repositories, migrations, or working with multi-driver database connections. Covers pgx patterns, ExternalConn usage, SQL conventions, and connection pool rules."
-applyTo: ["internal/database/**", "internal/modules/**/adapters/postgres/**", "migrations/**"]
+applyTo: "internal/database/**,internal/modules/**/adapters/postgres/**,migrations/**"
 ---
 
 # Database — สิ่งที่ต้องระวัง
