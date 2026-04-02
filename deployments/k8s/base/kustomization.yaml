@@ -4,9 +4,7 @@ kind: Kustomization
 namespace: anc-portal
 
 resources:
-  - namespace.yaml
   - configmap.yaml
-  - secret.yaml
   - api-deployment.yaml
   - api-service.yaml
   - api-hpa.yaml

@@ -30,6 +30,10 @@ go.work.sum
 !.env.local.example
 !.env.uat.example
 !.env.prod.example
+!.env.example
+
+# K8s secrets (use secret.yaml.example as template)
+deployments/k8s/base/secret.yaml
 
 # Air hot-reload
 tmp/

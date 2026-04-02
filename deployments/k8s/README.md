@@ -1,6 +1,6 @@
 # Kubernetes Deployment — ANC Portal Backend
 
-> **v2.0** — Last updated: March 2026
+> **v2.1** — Last updated: April 2026
 >
 > Kubernetes manifests สำหรับ deploy ด้วย Kustomize (base + overlays)
 >
@@ -49,10 +49,9 @@
 ```
 deployments/k8s/
 ├── base/                          ← Shared manifests (Kustomize base)
-│   ├── kustomization.yaml         ← Kustomize entry point
-│   ├── namespace.yaml             ← Namespace: anc-portal
+│   ├── kustomization.yaml         ← Kustomize entry point (namespace inline)
 │   ├── configmap.yaml             ← Environment variables (non-secret)
-│   ├── secret.yaml                ← Sensitive values (placeholder)
+│   ├── secret.yaml.example        ← ⚠️ Template — copy to secret.yaml ก่อนใช้
 │   ├── api-deployment.yaml        ← API server pods
 │   ├── api-service.yaml           ← ClusterIP Service (port 80 → 20000)
 │   ├── api-hpa.yaml               ← HorizontalPodAutoscaler
@@ -65,6 +64,8 @@ deployments/k8s/
 └── overlays/                      ← Environment-specific overrides
     ├── staging/
     │   └── kustomization.yaml     ← Staging: 2-4 pods, swagger on
+    ├── uat/
+    │   └── kustomization.yaml     ← UAT: 2-4 pods, swagger on, UAT domains
     └── production/
         └── kustomization.yaml     ← Production: 3-8 pods, PDB=2, high resources
 ```
@@ -127,13 +128,14 @@ kubectl get all -n anc-portal
 ### ขั้นตอนที่ 1: สร้าง Namespace
 
 ```bash
-kubectl apply -f deployments/k8s/base/namespace.yaml
+kubectl create namespace anc-portal
 ```
 
 ### ขั้นตอนที่ 2: สร้าง Secret (ใส่ค่าจริง)
 
 ```bash
-# แก้ค่าใน secret.yaml หรือสร้างจาก command line:
+# ใช้ template: cp secret.yaml.example secret.yaml แล้วแก้ค่า
+# หรือสร้างจาก command line:
 kubectl create secret generic anc-portal-secret \
   --namespace=anc-portal \
   --from-literal=DB_USER=anc_app \
@@ -184,22 +186,22 @@ curl http://localhost:8080/ready
 
 ---
 
-## Overlay: Staging vs Production
+## Overlay: Staging vs UAT vs Production
 
-| ค่า | Staging | Production |
-|---|---|---|
-| **API replicas** | 2 | 3 |
-| **HPA min/max** | 2–4 | 3–8 |
-| **Worker replicas** | 1 | 2 |
-| **CPU request/limit** | 100m / 500m | 200m / 1000m |
-| **Memory request/limit** | 128Mi / 256Mi | 256Mi / 512Mi |
-| **DB max connections** | 20 | 30 |
-| **OTel sample ratio** | 50% | 5% |
-| **Swagger** | เปิด | ปิด |
-| **CORS origins** | `*` | `https://portal.anc.co.th` |
-| **Image tag** | `staging` | `v1.0.0` |
-| **PDB minAvailable** | 1 | 2 |
-| **Ingress host** | `api-staging.anc-portal.example.com` | `api.portal.anc.co.th` |
+| ค่า | Staging | UAT | Production |
+|---|---|---|---|
+| **API replicas** | 2 | 2 | 3 |
+| **HPA min/max** | 2–4 | 2–4 | 3–8 |
+| **Worker replicas** | 1 | 1 | 2 |
+| **CPU request/limit** | 100m / 500m | 100m / 500m | 200m / 1000m |
+| **Memory request/limit** | 128Mi / 256Mi | 128Mi / 256Mi | 256Mi / 512Mi |
+| **DB max connections** | 20 | 20 | 30 |
+| **OTel sample ratio** | 50% | 50% | 5% |
+| **Swagger** | เปิด | เปิด | ปิด |
+| **CORS origins** | `*` | `https://uat-portal.anc.co.th` | `https://portal.anc.co.th` |
+| **Image tag** | `staging` | `uat` | `v1.0.0` |
+| **PDB minAvailable** | 1 | 1 | 2 |
+| **Ingress host** | `api-staging.anc-portal.example.com` | `uat-portal-api.anc.co.th` | `api.portal.anc.co.th` |
 
 ---
 
@@ -412,7 +414,7 @@ kubectl exec <pod-name> -n anc-portal -- env | sort
 
 | # | ไฟล์ | สิ่งที่ต้องเปลี่ยน |
 |---|---|---|
-| 1 | `base/secret.yaml` | ใส่ DB_PASSWORD, JWT_SECRET_KEY จริง หรือใช้ External Secrets |
+| 1 | `base/secret.yaml.example` | Copy เป็น `secret.yaml` แล้วใส่ค่าจริง หรือใช้ External Secrets |
 | 2 | `base/api-deployment.yaml` | เปลี่ยน `image:` เป็น registry จริง |
 | 3 | `base/worker-deployment.yaml` | เปลี่ยน `image:` เป็น registry จริง |
 | 4 | `base/configmap.yaml` | ใส่ DB_HOST, REDIS_HOST ที่ถูกต้องตาม cluster |
@@ -422,4 +424,4 @@ kubectl exec <pod-name> -n anc-portal -- env | sort
 
 ---
 
-> **v2.0** — March 2026 | ANC Portal Backend Team
+> **v2.1** — April 2026 | ANC Portal Backend Team

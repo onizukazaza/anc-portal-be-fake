@@ -44,7 +44,7 @@ patches:
     patch: |
       - op: replace
         path: /data/STAGE_STATUS
-        value: "staging"
+        value: "uat"
       - op: replace
         path: /data/SERVER_ALLOW_ORIGINS
         value: "https://uat-portal.anc.co.th"
@@ -72,3 +72,21 @@ patches:
       - op: replace
         path: /data/KAFKA_GROUP_ID
         value: "anc-portal-worker-uat"
+
+  # Ingress: UAT host
+  - target:
+      kind: Ingress
+      name: anc-portal-api
+    patch: |
+      - op: replace
+        path: /spec/tls/0/hosts/0
+        value: "uat-portal-api.anc.co.th"
+      - op: replace
+        path: /spec/rules/0/host
+        value: "uat-portal-api.anc.co.th"
+
+images:
+  - name: ghcr.io/onizukazaza/anc-portal-be-fake
+    newTag: uat
+  - name: ghcr.io/anc-portal/anc-portal-worker
+    newTag: uat
