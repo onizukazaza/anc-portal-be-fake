@@ -9,6 +9,7 @@ import (
 
 func Run(ctx context.Context, db *pgxpool.Pool, serviceType string) error {
 	switch serviceType {
+	// >> case stage user
 	case "auth_user":
 		if err := SeedAuthUsers(ctx, db); err != nil {
 			return fmt.Errorf("seed auth users: %w", err)
