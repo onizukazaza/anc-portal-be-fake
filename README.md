@@ -66,6 +66,9 @@
 - [📈 Coverage & Test Logging](#-coverage--test-logging)
 - [🏗️ โครงสร้างโปรเจกต์](#️-โครงสร้างโปรเจกต์)
 - [🎯 Entry Points](#-entry-points)
+- [🌐 Tunnel — Expose Local to Internet](#-tunnel--expose-local-to-internet)
+- [🚀 Deploy — Staging & Production](#-deploy--staging--production)
+- [📊 Architecture Review](#-architecture-review)
 - [📚 เอกสาร](#-เอกสาร)
 - [🧰 Tech Stack](#-tech-stack)
 
@@ -573,6 +576,106 @@ anc-portal-be/
 | 🌱 | **seed** | Seed ข้อมูลเริ่มต้น | `.\run.ps1 seed` |
 | 📥 | **import** | CSV import (insurer, user, province) | `go run ./cmd/import --help` |
 | 🔄 | **sync** | Data sync จาก External DB → Main DB | `go run ./cmd/sync --help` |
+
+---
+
+## 🌐 Tunnel — Expose Local to Internet
+
+ใช้ **ngrok** เปิด localhost ให้เข้าจากภายนอกได้ — สำหรับ test webhook, demo, หรือแชร์ให้ทีม
+
+```powershell
+# วิธีง่ายสุด
+ngrok http 3000
+
+# ใช้ named tunnel จาก config (MSIX version ต้องใช้ dual-config)
+ngrok start --config "$env:LOCALAPPDATA/ngrok/ngrok.yml" --config ngrok.yml api
+```
+
+| Tunnel | Port | ใช้ทำอะไร |
+|--------|------|----------|
+| `api` | 3000 | Expose API ให้คนนอกเรียก |
+| `webhook` | 3000 | รับ GitHub Webhook จากภายนอก |
+
+> Dashboard (request inspector): http://127.0.0.1:4040
+> Config: [`ngrok.yml`](ngrok.yml)
+
+---
+
+## 🚀 Deploy — Staging & Production
+
+### Branch Strategy
+
+```
+  feature/* ──▶ develop ──▶ main
+                  │          │
+                  ▼          ▼
+              🟡 Staging   🟢 Production
+              (auto CI)    (manual tag)
+```
+
+| Branch | Environment | Deploy วิธี | Image Tag |
+|--------|-------------|------------|-----------|
+| `develop` | Staging | push → CI auto deploy | `staging` |
+| `main` | Production | tag `v*` → CI deploy | `v1.0.0` |
+
+### Deploy Staging (develop branch)
+
+```powershell
+# 1. Push develop (CI จะ build + deploy อัตโนมัติ)
+git push origin develop
+
+# 2. หรือ deploy manual ด้วย Kustomize
+kubectl apply -k deployments/k8s/overlays/staging
+```
+
+### Deploy Production (main branch + tag)
+
+```powershell
+# 1. Merge develop → main
+git checkout main
+git merge develop --no-ff -m "release: v1.x.x"
+git push origin main
+
+# 2. Tag release
+git tag -a v1.x.x -m "Release v1.x.x"
+git push origin v1.x.x
+
+# 3. CI จะ deploy production อัตโนมัติ
+# หรือ manual:
+kubectl apply -k deployments/k8s/overlays/production
+```
+
+### Environment Comparison
+
+| | Staging | UAT | Production |
+|---|---|---|---|
+| **API replicas** | 2 | 2 | 3 |
+| **HPA** | 2–4 pods | 2–4 pods | 3–8 pods |
+| **Swagger** | เปิด | เปิด | ปิด |
+| **OTel sample** | 50% | 50% | 5% |
+| **CORS** | `*` | `uat-portal.anc.co.th` | `portal.anc.co.th` |
+| **Image tag** | `staging` | `uat` | `v1.0.0` |
+
+> 📝 K8s manifests: [`deployments/k8s/`](deployments/k8s/README.md)
+
+---
+
+## 📊 Architecture Review
+
+สรุปจุดแข็ง จุดอ่อน และ scorecard ของโปรเจกต์:
+
+```
+  Architecture    ██████████████████░░  9/10
+  Security        ████████████████░░░░  8/10
+  DX (Dev Exp.)   ████████████████████  10/10
+  Observability   ████████████████░░░░  8/10
+  Testing         ██████████░░░░░░░░░░  5/10
+  Infra/Deploy    ████████████████░░░░  8/10
+  Documentation   ████████████████████  10/10
+  Overall         ████████████████░░░░  8/10
+```
+
+> 📝 รายละเอียดทั้งหมด → [Architecture Review](documents/architecture-review.md)
 
 ---
 

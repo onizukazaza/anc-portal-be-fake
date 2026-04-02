@@ -1,0 +1,20 @@
+# ngrok tunnels — ANC Portal Backend
+# Docs: https://ngrok.com/docs/agent/config
+#
+# MSIX (Microsoft Store) version ต้องใช้ dual-config:
+#   ngrok start --config "$env:LOCALAPPDATA/ngrok/ngrok.yml" --config ngrok.yml api
+#
+# หรือใช้ alias ใน run.ps1:
+#   .\run.ps1 tunnel         → expose API (port 3000)
+#   .\run.ps1 tunnel-all     → expose all tunnels
+
+version: 3
+
+tunnels:
+  api:
+    proto: http
+    addr: 3000
+
+  webhook:
+    proto: http
+    addr: 3000
