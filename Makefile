@@ -5,7 +5,7 @@
 # ดูคำสั่งทั้งหมด: make help
 # =============================================================================
 
-.PHONY: help dev build test test-cover lint ci migrate seed import worker \
+.PHONY: help dev build test test-cover lint ci migrate worker \
         otel-up otel-down otel-down-v otel-logs otel-ps \
         local-up local-down local-down-v local-logs local-ps \
         docker-build docker-build-worker \
@@ -28,8 +28,6 @@ help: ## แสดงคำสั่งทั้งหมด
 	@echo ""
 	@echo "  Database:"
 	@echo "    make migrate       Run database migrations"
-	@echo "    make seed          Run data seeding"
-	@echo "    make import        Import CSV data (requires ENV, PATH, TYPE)"
 	@echo ""
 	@echo "  Worker:"
 	@echo "    make worker        Run background worker"
@@ -100,8 +98,6 @@ ci: lint test ## Run full CI pipeline locally (lint → test → vuln → build)
 	go build -ldflags="$(LDFLAGS)" -o ./tmp/main.exe ./cmd/api
 	go build -ldflags="$(LDFLAGS)" -o ./tmp/worker.exe ./cmd/worker
 	go build -ldflags="$(LDFLAGS)" -o ./tmp/migrate.exe ./cmd/migrate
-	go build -ldflags="$(LDFLAGS)" -o ./tmp/seed.exe ./cmd/seed
-	go build -ldflags="$(LDFLAGS)" -o ./tmp/import.exe ./cmd/import
 	@echo ""
 	@echo "=========================================="
 	@echo "  CI Pipeline PASSED (all 4 steps)"  
@@ -123,12 +119,6 @@ clean: ## ลบ build artifacts
 
 migrate: ## Run database migrations
 	go run ./cmd/migrate
-
-seed: ## Run data seeding
-	go run ./cmd/seed
-
-import: ## Import CSV data (example: make import ENV=.env.local PATH=./base_data/users.csv TYPE=user)
-	go run ./cmd/import/main.go --env $(ENV) --path $(PATH) --service_type $(TYPE)
 
 # =============================================================================
 # >> Worker

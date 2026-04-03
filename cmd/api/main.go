@@ -7,38 +7,8 @@
 // air -c .air.local.toml
 
 // @title ANC Portal API
-// @version 1.1.0
-// @description Backend API for ANC Insurance Portal
-// @description
-// @description ## Error Response Format
-// @description ทุก error response จะมี `trace_id` ใน `result` เพื่อระบุจุดที่เกิด error
-// @description ```json
-// @description {"status":"ERROR","status_code":404,"message":"quotation not found","result":{"trace_id":"qt-not-found"}}
-// @description ```
-// @description
-// @description ## Error Code Catalog
-// @description > Source of truth: `internal/shared/dto/error_codes.go`
-// @description
-// @description | Module | Trace ID | Code | HTTP | คำอธิบาย |
-// @description |--------|----------|------|------|---------|
-// @description | Auth | auth-bind-failed | 10001 | 400 | request body ไม่ถูกต้อง |
-// @description | Auth | auth-invalid-creds | 10002 | 401 | username/password ไม่ถูกต้อง |
-// @description | Auth | auth-internal-error | 10003 | 500 | เกิดข้อผิดพลาดภายใน auth service |
-// @description | Auth | auth-token-missing | 10004 | 401 | ไม่มี Authorization header หรือ token ว่าง |
-// @description | Auth | auth-token-invalid | 10005 | 401 | token ไม่ถูกต้องหรือหมดอายุ |
-// @description | Quotation | qt-id-required | 11001 | 400 | ไม่ได้ส่ง quotation id |
-// @description | Quotation | qt-not-found | 11002 | 404 | ไม่พบ quotation |
-// @description | Quotation | qt-internal-error | 11003 | 500 | เกิดข้อผิดพลาดภายใน quotation service |
-// @description | Quotation | qt-customer-id-required | 11004 | 400 | ไม่ได้ส่ง customerId |
-// @description | Quotation | qt-list-internal-error | 11005 | 500 | เกิดข้อผิดพลาดขณะดึงรายการ quotation |
-// @description | CMI | cmi-job-id-required | 12001 | 400 | ไม่ได้ส่ง job_id |
-// @description | CMI | cmi-job-not-found | 12002 | 404 | ไม่พบ job |
-// @description | CMI | cmi-internal-error | 12003 | 500 | เกิดข้อผิดพลาดภายใน CMI service |
-// @description | ExternalDB | extdb-name-required | 13001 | 400 | ไม่ได้ส่ง database name |
-// @description | ExternalDB | extdb-not-found | 13002 | 404 | ไม่พบ database ที่ระบุ |
-// @description | ExternalDB | extdb-unhealthy | 13003 | 503 | database ไม่สามารถเชื่อมต่อได้ |
-// @description | Webhook | wh-invalid-signature | 14001 | 401 | GitHub signature ไม่ถูกต้อง |
-// @description | Webhook | wh-process-failed | 14002 | 500 | ประมวลผล webhook ล้มเหลว |
+// @version 1.0.0
+// @description Backend API Blueprint — Hexagonal Architecture with Go + Fiber
 // @host localhost:3000
 // @BasePath /v1
 // @schemes http
@@ -46,10 +16,6 @@
 // @in header
 // @name Authorization
 // @description Input: Bearer {access_token}
-//
-// NOTE:
-// ค่าข้างบนใช้สำหรับ generate Swagger documentation (swag init) เท่านั้น !
-// ตอน runtime จะถูก override ด้วย environment configuration
 package main
 
 import (
@@ -58,12 +24,10 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
 	"github.com/onizukazaza/anc-portal-be-fake/config"
-	"github.com/onizukazaza/anc-portal-be-fake/docs" // >> swagger generated docs
 	"github.com/onizukazaza/anc-portal-be-fake/internal/database"
 	"github.com/onizukazaza/anc-portal-be-fake/internal/database/postgres"
 	"github.com/onizukazaza/anc-portal-be-fake/pkg/banner"
@@ -93,15 +57,8 @@ func main() {
 		appLogger.Fatal().Err(err).Msg("config load failed")
 	}
 
-	// >> Swagger Runtime Override (ค่าจาก env แทนค่าตอน swag init)
-	if cfg.Swagger.Enabled {
-		env := strings.ToUpper(cfg.StageStatus)
-		docs.SwaggerInfo.Title = fmt.Sprintf("ANC Portal API [%s]", env)
-		docs.SwaggerInfo.Description = fmt.Sprintf("Backend API for ANC Insurance Portal\n\nEnvironment: %s", env)
-		docs.SwaggerInfo.Host = cfg.Swagger.Host
-		docs.SwaggerInfo.Schemes = cfg.Swagger.Schemes
-		docs.SwaggerInfo.BasePath = cfg.Swagger.BasePath
-	}
+	// >> Swagger: ใช้ swag init เพื่อ generate docs/ แล้ว import ด้านบน
+	// ถ้ายังไม่ generate → ปิด Swagger ใน config หรือ run: make swagger
 
 	// >> Run migration only on local stage with explicit env flag
 	// Env required: RUN_DB_MIGRATION=true

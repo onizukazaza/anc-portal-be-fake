@@ -9,6 +9,7 @@ type Claims struct {
 }
 
 // TokenSigner signs and verifies access tokens.
+// Implement in adapters/external/ (e.g., JWT signer for prod, simple signer for dev).
 type TokenSigner interface {
 	SignAccessToken(ctx context.Context, userID string, roles []string) (string, error)
 	VerifyAccessToken(ctx context.Context, tokenString string) (*Claims, error)

@@ -19,10 +19,7 @@ import (
 	"github.com/onizukazaza/anc-portal-be-fake/config"
 	"github.com/onizukazaza/anc-portal-be-fake/internal/database"
 	"github.com/onizukazaza/anc-portal-be-fake/internal/modules/auth"
-	"github.com/onizukazaza/anc-portal-be-fake/internal/modules/cmi"
-	"github.com/onizukazaza/anc-portal-be-fake/internal/modules/externaldb"
-	"github.com/onizukazaza/anc-portal-be-fake/internal/modules/quotation"
-	"github.com/onizukazaza/anc-portal-be-fake/internal/modules/webhook"
+	"github.com/onizukazaza/anc-portal-be-fake/internal/modules/example"
 	"github.com/onizukazaza/anc-portal-be-fake/internal/shared/dto"
 	"github.com/onizukazaza/anc-portal-be-fake/internal/shared/enum"
 	module "github.com/onizukazaza/anc-portal-be-fake/internal/shared/module"
@@ -233,13 +230,8 @@ func (s *Server) registerRoutes() {
 	}
 
 	// ─── Module registration (each module applies auth internally) ─
-	auth.Register(api, deps, tokenSigner)
-	if wait := webhook.Register(api, deps); wait != nil {
-		s.onShutdown = append(s.onShutdown, wait)
-	}
-	externaldb.Register(api, deps)
-	quotation.Register(api, deps)
-	cmi.Register(api, deps)
+	// TODO: auth.Register(api, deps, tokenSigner)  ← uncomment when auth module is implemented
+	example.Register(api, deps)
 
 	// >> Kafka test route for local stage (public, no auth)
 	if s.cfg.StageStatus == enum.StageLocal && s.kafkaProducer != nil {

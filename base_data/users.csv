@@ -1,9 +1,0 @@
-id,role,citizen_id,passport_id,prefix_id,first_name,last_name,nick_name,gender,birth_date,phone_number,email,is_verified_email,verified_email_datetime,password,profile_image_url,status,terms_and_conditions_id,anc_marketer_id,marketer
-AGT-20001,"[""agent""]",,,,"วีระ","ชัยดี","วี","male",1987-02-10,0811000001,agent101@test.com,false,,"$2a$10$examplehash001",,active,,,"{""team"":""north""}"
-AGT-20002,"[""agent""]",,,,"กมล","ศรีสุข","กมล","male",1991-06-15,0811000002,agent102@test.com,false,,"$2a$10$examplehash002",,active,,,"{""team"":""north""}"
-AGT-20003,"[""agent""]",,,,"นภา","วัฒน์ดี","นภา","female",1993-09-21,0811000003,agent103@test.com,false,,"$2a$10$examplehash003",,active,,,"{""team"":""central""}"
-AGT-20004,"[""agent""]",,,,"ธนา","รุ่งเรือง","ธนา","male",1988-12-01,0811000004,agent104@test.com,false,,"$2a$10$examplehash004",,active,,,"{""team"":""south""}"
-AGT-20005,"[""agent""]",,,,"ศิริพร","บุญมี","ศิริ","female",1995-03-30,0811000005,agent105@test.com,false,,"$2a$10$examplehash005",,active,,,"{""team"":""east""}"
-AGT-20006,"[""agent""]",,,,"ปกรณ์","ทองดี","ป๊อก","male",1990-07-19,0811000006,agent106@test.com,false,,"$2a$10$examplehash006",,active,,,"{""team"":""west""}"
-AGT-20007,"[""agent""]",,,,"จิราภรณ์","แสงทอง","จิ","female",1994-11-11,0811000007,agent107@test.com,false,,"$2a$10$examplehash007",,active,,,"{""team"":""central""}"
-AGT-20008,"[""agent""]",,,,"อนุชา","ศรีไทย","ชา","male",1986-05-22,0811000008,agent108@test.com,false,,"$2a$10$examplehash008",,active,,,"{""team"":""north""}"
