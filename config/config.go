@@ -13,6 +13,7 @@ type Config struct {
 	OTel        OTel                `mapstructure:"otel"`
 	Kafka       Kafka               `mapstructure:"kafka"`
 	Webhook     Webhook             `mapstructure:"webhook"`
+	Mock        Mock                `mapstructure:"mock"`
 }
 
 type Server struct {
@@ -102,4 +103,9 @@ type Webhook struct {
 	Enabled           bool   `mapstructure:"enabled"`
 	GitHubSecret      string `mapstructure:"githubSecret"`
 	DiscordWebhookURL string `mapstructure:"discordWebhookUrl"`
+}
+
+type Mock struct {
+	Enabled    bool   `mapstructure:"enabled"`
+	RoutesFile string `mapstructure:"routesFile"`
 }

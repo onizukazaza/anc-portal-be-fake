@@ -1,0 +1,15 @@
+{
+  "status": "OK",
+  "status_code": 200,
+  "message": "success",
+  "result": {
+    "data": {
+      "id": "QT-2026-00001",
+      "docNo": "DOC-2026-00001",
+      "customerId": "CUST-00001",
+      "totalAmount": 12500.00,
+      "status": "approved",
+      "createdAt": "2026-04-01T10:00:00Z"
+    }
+  }
+}

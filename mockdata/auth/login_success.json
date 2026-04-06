@@ -1,0 +1,12 @@
+{
+  "status": "OK",
+  "status_code": 200,
+  "message": "success",
+  "result": {
+    "data": {
+      "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.mock-token-for-frontend-development",
+      "userId": "usr-admin-001",
+      "roles": ["admin"]
+    }
+  }
+}

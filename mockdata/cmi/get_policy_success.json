@@ -1,0 +1,112 @@
+{
+  "status": "OK",
+  "status_code": 200,
+  "message": "success",
+  "result": {
+    "data": {
+      "job_id": "JOB-20260001",
+      "job_type": "cmi-single",
+      "job_ref_id": "REF-90001",
+      "job_status": "completed",
+      "agent_id": "AGT-20001",
+      "commission_tax_type": "include",
+      "with_holding_tax": true,
+      "tax_allocation": false,
+      "is_problem": false,
+      "insurer_id": 1,
+      "insurer_name": "บริษัท กรุงเทพประกันภัย จำกัด (มหาชน)",
+      "product_id": "PRD-CMI-001",
+      "motor_info": {
+        "id": 1001,
+        "year": "2025",
+        "brand": "Toyota",
+        "brand_logo_url": "https://example.com/logos/toyota.png",
+        "model": "Yaris",
+        "sub_model": "ATIV Sport",
+        "motor_code": "MT-TY-YARIS-2025"
+      },
+      "asset_info": {
+        "id": "AST-00001",
+        "cmi_code": "110",
+        "license_plate": {
+          "car_registration": "กข 1234",
+          "province_id": 1,
+          "province_name": "กรุงเทพมหานคร"
+        },
+        "chassis_no": "MRHBJ4E2HNJ012345",
+        "engine_no": "2NRF654321",
+        "color": {
+          "color_id": 1,
+          "color_code": "BK",
+          "color_name_th": "ดำ",
+          "color_name_en": "Black"
+        }
+      },
+      "insured": {
+        "id": "INS-00001",
+        "type": "personal",
+        "prefix_id": 1,
+        "prefix": "นาย",
+        "first_name": "สมชาย",
+        "last_name": "ใจดี",
+        "citizen_id": "1234567890123",
+        "passport_id": "",
+        "gender": "male",
+        "birth_date": "1990-05-15",
+        "phone_number": "0812345678",
+        "email": "somchai@example.com"
+      },
+      "policy": {
+        "cmi": {
+          "start_date": "2026-04-06",
+          "end_date": "2027-04-05"
+        }
+      },
+      "address_info": {
+        "main_address": {
+          "address_no": "123/45",
+          "moo": "5",
+          "building": "อาคาร ABC",
+          "floor": "3",
+          "soi": "ลาดพร้าว 80",
+          "road": "ลาดพร้าว",
+          "sub_district": "วังทองหลาง",
+          "district": "วังทองหลาง",
+          "province": "กรุงเทพมหานคร",
+          "postal_code": "10310"
+        },
+        "shipping_address": null,
+        "billing_address": null
+      },
+      "agent_info": {
+        "id": "AGT-20001",
+        "first_name": "วิชัย",
+        "last_name": "สุขสม",
+        "nick_name": "ชัย",
+        "email": "wichai@example.com",
+        "profile_image_url": "https://example.com/avatars/agt-20001.png",
+        "role": "agent",
+        "class": "A",
+        "anc_agent_id": "ANC-A001",
+        "organization_name": "ANC Insurance Broker",
+        "team_name": "Team Alpha",
+        "team_role": "leader",
+        "status": "active"
+      },
+      "products": [],
+      "payment_info": [],
+      "insurance_documents": [],
+      "insured_documents": [],
+      "quote": {
+        "id": "QT-00001",
+        "job_id": "JOB-20260001",
+        "download_url": "https://example.com/quotes/QT-00001.pdf",
+        "image_url": "https://example.com/quotes/QT-00001.png",
+        "created_at": "2026-04-01T10:00:00Z",
+        "updated_at": "2026-04-01T10:00:00Z"
+      },
+      "created_at": "2026-04-01T09:00:00Z",
+      "updated_at": "2026-04-05T14:30:00Z"
+    }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "status": "ERROR",
+  "status_code": 401,
+  "message": "invalid credentials",
+  "result": {
+    "trace_id": "auth-invalid-creds"
+  }
+}

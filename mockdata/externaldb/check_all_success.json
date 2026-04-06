@@ -1,0 +1,16 @@
+{
+  "status": "OK",
+  "status_code": 200,
+  "message": "success",
+  "result": {
+    "data": [
+      {
+        "name": "meprakun",
+        "driver": "postgres",
+        "status": "healthy",
+        "currentDatabase": "meprakun_db",
+        "version": "PostgreSQL 16.2"
+      }
+    ]
+  }
+}

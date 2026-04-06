@@ -1,0 +1,41 @@
+{
+  "status": "OK",
+  "status_code": 200,
+  "message": "success",
+  "result": {
+    "data": {
+      "items": [
+        {
+          "id": "QT-2026-00001",
+          "docNo": "DOC-2026-00001",
+          "customerId": "CUST-00001",
+          "totalAmount": 12500.00,
+          "status": "approved",
+          "createdAt": "2026-04-01T10:00:00Z"
+        },
+        {
+          "id": "QT-2026-00002",
+          "docNo": "DOC-2026-00002",
+          "customerId": "CUST-00001",
+          "totalAmount": 8750.50,
+          "status": "pending",
+          "createdAt": "2026-04-02T14:30:00Z"
+        },
+        {
+          "id": "QT-2026-00003",
+          "docNo": "DOC-2026-00003",
+          "customerId": "CUST-00001",
+          "totalAmount": 45000.00,
+          "status": "draft",
+          "createdAt": "2026-04-03T09:15:00Z"
+        }
+      ],
+      "total": 3,
+      "page": 1,
+      "limit": 20,
+      "totalPages": 1,
+      "hasNext": false,
+      "hasPrev": false
+    }
+  }
+}

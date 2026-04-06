@@ -1,0 +1,8 @@
+{
+  "status": "ERROR",
+  "status_code": 500,
+  "message": "internal server error",
+  "result": {
+    "trace_id": "internal-error"
+  }
+}
