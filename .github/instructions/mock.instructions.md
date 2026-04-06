@@ -158,7 +158,8 @@ list_quotations_empty.json   ← GET  /v1/quotations (200, empty list)
   {
     "method": "GET",
     "path": "/v1/cmi/:job_id/request-policy-single-cmi",
-    "file": "cmi/get_policy_success.json"
+    "file": "cmi/get_policy_success.json",
+    "enabled": true
   }
 ]
 ```
@@ -168,6 +169,7 @@ list_quotations_empty.json   ← GET  /v1/quotations (200, empty list)
 | `method` | HTTP method: `GET`, `POST`, `PUT`, `DELETE` |
 | `path` | Fiber-style path — `:param` คือ wildcard |
 | `file` | path สัมพัทธ์จาก `mockdata/` |
+| `enabled` | `true`/`false` — เปิด/ปิดรายตัว (ไม่ระบุ = `true`) |
 
 ### เปลี่ยน Scenario
 
@@ -177,16 +179,34 @@ list_quotations_empty.json   ← GET  /v1/quotations (200, empty list)
   {
     "method": "GET",
     "path": "/v1/cmi/:job_id/request-policy-single-cmi",
--   "file": "cmi/get_policy_success.json"
-+   "file": "cmi/get_policy_not_found.json"
+-   "file": "cmi/get_policy_success.json",
++   "file": "cmi/get_policy_not_found.json",
+    "enabled": true
   }
 ```
+
+### ปิด Mock เฉพาะ Endpoint
+
+ตั้ง `enabled` เป็น `false` → route นั้นจะ fall-through ไป handler จริง:
+
+```diff
+  {
+    "method": "GET",
+    "path": "/v1/quotations",
+    "file": "quotation/list_quotations_success.json",
+-   "enabled": true
++   "enabled": false
+  }
+```
+
+ไม่ต้องลบ route ออก — แค่ `false` พอ เปิดกลับแค่เปลี่ยนเป็น `true`
 
 ### กฎ
 
 | กฎ | ทำไม |
 |----|------|
 | `file` ห้ามมี `..` | ป้องกัน path traversal (middleware จะ block) |
+| `enabled` ไม่ระบุ → default `true` | backward compatible กับ routes เดิม |
 | route ซ้ำกัน → ใช้ตัวแรกที่ match | middleware อ่าน sequential, match แรกชนะ |
 | route ไม่อยู่ใน `routes.json` → fall-through | ไปใช้ handler จริง |
 
