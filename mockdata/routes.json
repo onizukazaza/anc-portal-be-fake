@@ -1,0 +1,32 @@
+[
+  {
+    "method": "POST",
+    "path": "/v1/auth/login",
+    "file": "auth/login_success.json"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/cmi/:job_id/request-policy-single-cmi",
+    "file": "cmi/get_policy_success.json"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/quotations/:id",
+    "file": "quotation/get_quotation_success.json"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/quotations",
+    "file": "quotation/list_quotations_success.json"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/external-db/health",
+    "file": "externaldb/check_all_success.json"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/external-db/health/:name",
+    "file": "externaldb/check_by_name_success.json"
+  }
+]

@@ -66,7 +66,8 @@
 - [📈 Coverage & Test Logging](#-coverage--test-logging)
 - [🏗️ โครงสร้างโปรเจกต์](#️-โครงสร้างโปรเจกต์)
 - [🎯 Entry Points](#-entry-points)
-- [🌐 Tunnel — Expose Local to Internet](#-tunnel--expose-local-to-internet)
+- [� Mock Data — FE Development](#-mock-data--fe-development)
+- [�🌐 Tunnel — Expose Local to Internet](#-tunnel--expose-local-to-internet)
 - [🚀 Deploy — Staging & Production](#-deploy--staging--production)
 - [📊 Architecture Review](#-architecture-review)
 - [📚 เอกสาร](#-เอกสาร)
@@ -579,7 +580,45 @@ anc-portal-be/
 
 ---
 
-## 🌐 Tunnel — Expose Local to Internet
+## � Mock Data — FE Development
+
+ระบบ Mock สำหรับ FE ใช้ระหว่างพัฒนา — เรียก URL เดิมได้เลย ไม่ต้องแก้โค้ดฝั่ง FE
+
+```
+  FE Request → Mock Middleware → match?  → ตอบ JSON จาก mockdata/
+                               → ไม่ match → handler จริง (fall-through)
+```
+
+### เปิดใช้
+
+```env
+MOCK_ENABLED=true
+```
+
+### เปลี่ยน Scenario
+
+แก้ `file` ใน `mockdata/routes.json`:
+
+```diff
+- "file": "cmi/get_policy_success.json"
++ "file": "cmi/get_policy_not_found.json"
+```
+
+### Mock Files ที่มี
+
+| Module | Files | Scenarios |
+|--------|-------|-----------|
+| auth | 2 | login success, invalid credentials |
+| cmi | 2 | get policy success, not found |
+| quotation | 4 | get/list success, not found, empty list |
+| externaldb | 2 | check all, check by name |
+| _shared | 2 | unauthorized (401), internal error (500) |
+
+> 📝 กฎและวิธีใช้ → [Mock Instructions](.github/instructions/mock.instructions.md) | [Mock README](mockdata/README.md)
+
+---
+
+## �🌐 Tunnel — Expose Local to Internet
 
 ใช้ **ngrok** เปิด localhost ให้เข้าจากภายนอกได้ — สำหรับ test webhook, demo, หรือแชร์ให้ทีม
 
@@ -701,6 +740,7 @@ kubectl apply -k deployments/k8s/overlays/production
 | 🧪 | [Unit Test Guide](documents/testing/unit-test-guide.md) | Test patterns, testkit, fakes |
 | 📝 | [Unit Test Cheatsheet](documents/testing/unit-test-cheatsheet.md) | Quick reference — commands, patterns |
 | 📥 | [Import Data](cmd/import/import_data_guide.md) | CSV import — insurer, province, user |
+| 🎭 | [Mock Data](mockdata/README.md) | Mock middleware — วิธีใช้, เพิ่ม mock ใหม่ |
 
 ---
 

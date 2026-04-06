@@ -185,6 +185,13 @@ func (s *Server) initMiddlewares() {
 }
 
 func (s *Server) registerRoutes() {
+	// >> Mock middleware (สำหรับ FE development — ต้องอยู่ก่อน module routes)
+	if s.cfg.Mock.Enabled {
+		s.app.Use(mw.Mock(mw.MockConfig{
+			RoutesFile: s.cfg.Mock.RoutesFile,
+		}))
+	}
+
 	// >> Prometheus metrics endpoint (Grafana scrape target)
 	if s.cfg.OTel.Enabled {
 		s.app.Get("/metrics", adaptor.HTTPHandler(appOtel.PrometheusHandler()))

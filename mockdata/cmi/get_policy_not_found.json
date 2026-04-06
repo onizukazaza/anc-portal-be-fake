@@ -1,0 +1,8 @@
+{
+  "status": "ERROR",
+  "status_code": 404,
+  "message": "job not found",
+  "result": {
+    "trace_id": "cmi-job-not-found"
+  }
+}

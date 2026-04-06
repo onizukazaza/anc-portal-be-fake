@@ -1,0 +1,8 @@
+{
+  "status": "ERROR",
+  "status_code": 401,
+  "message": "missing authorization header",
+  "result": {
+    "trace_id": "auth-token-missing"
+  }
+}
