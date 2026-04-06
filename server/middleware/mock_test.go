@@ -251,3 +251,136 @@ func TestMockMiddleware_PathTraversal(t *testing.T) {
 		t.Errorf("status = %d, want %d (path traversal should be blocked)", resp.StatusCode, http.StatusTeapot)
 	}
 }
+
+// ─── Enabled / Disabled per-route ────────────────────────────────
+
+func TestMockMiddleware_EnabledField(t *testing.T) {
+	dir := t.TempDir()
+
+	authDir := filepath.Join(dir, "auth")
+	if err := os.MkdirAll(authDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	mockJSON := `{"status":"OK","status_code":200,"message":"success","result":{"data":{"accessToken":"mock-token"}}}`
+	if err := os.WriteFile(filepath.Join(authDir, "login.json"), []byte(mockJSON), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	cmiDir := filepath.Join(dir, "cmi")
+	if err := os.MkdirAll(cmiDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	cmiJSON := `{"status":"OK","status_code":200,"message":"success","result":{"data":{"job_id":"JOB-001"}}}`
+	if err := os.WriteFile(filepath.Join(cmiDir, "policy.json"), []byte(cmiJSON), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	// auth enabled=true, cmi enabled=false
+	routesJSON := `[
+		{"method":"POST","path":"/v1/auth/login","file":"auth/login.json","enabled":true},
+		{"method":"GET","path":"/v1/cmi/:job_id/request-policy-single-cmi","file":"cmi/policy.json","enabled":false}
+	]`
+	routesFile := filepath.Join(dir, "routes.json")
+	if err := os.WriteFile(routesFile, []byte(routesJSON), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	app := fiber.New()
+	app.Use(Mock(MockConfig{RoutesFile: routesFile}))
+	app.All("/*", func(c *fiber.Ctx) error {
+		return c.Status(fiber.StatusTeapot).SendString("real handler")
+	})
+
+	t.Run("enabled route returns mock", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "/v1/auth/login", nil)
+		resp, err := app.Test(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			t.Errorf("status = %d, want %d", resp.StatusCode, http.StatusOK)
+		}
+		if resp.Header.Get("X-Mock") != "true" {
+			t.Error("missing X-Mock header")
+		}
+	})
+
+	t.Run("disabled route falls through to real handler", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/v1/cmi/JOB-001/request-policy-single-cmi", nil)
+		resp, err := app.Test(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusTeapot {
+			t.Errorf("status = %d, want %d (disabled mock should fall through)", resp.StatusCode, http.StatusTeapot)
+		}
+		if resp.Header.Get("X-Mock") != "" {
+			t.Error("X-Mock header should not be present for disabled routes")
+		}
+	})
+}
+
+func TestMockMiddleware_EnabledDefault(t *testing.T) {
+	dir := t.TempDir()
+
+	authDir := filepath.Join(dir, "auth")
+	if err := os.MkdirAll(authDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	mockJSON := `{"status":"OK","status_code":200,"message":"success"}`
+	if err := os.WriteFile(filepath.Join(authDir, "login.json"), []byte(mockJSON), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	// ไม่มี enabled field → default ต้องเป็น true
+	routesJSON := `[{"method":"POST","path":"/v1/auth/login","file":"auth/login.json"}]`
+	routesFile := filepath.Join(dir, "routes.json")
+	if err := os.WriteFile(routesFile, []byte(routesJSON), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	app := fiber.New()
+	app.Use(Mock(MockConfig{RoutesFile: routesFile}))
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/auth/login", nil)
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("status = %d, want %d (no enabled field should default to true)", resp.StatusCode, http.StatusOK)
+	}
+	if resp.Header.Get("X-Mock") != "true" {
+		t.Error("missing X-Mock header")
+	}
+}
+
+func TestIsEnabled(t *testing.T) {
+	trueVal := true
+	falseVal := false
+
+	tests := []struct {
+		name    string
+		enabled *bool
+		want    bool
+	}{
+		{"nil defaults to true", nil, true},
+		{"explicit true", &trueVal, true},
+		{"explicit false", &falseVal, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := MockRoute{Enabled: tt.enabled}
+			if got := r.isEnabled(); got != tt.want {
+				t.Errorf("isEnabled() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

@@ -29,9 +29,16 @@ import (
 
 // MockRoute คือ entry หนึ่งใน routes.json ที่จับคู่ request กับ mock file
 type MockRoute struct {
-	Method string `json:"method"` // HTTP method: GET, POST, PUT, DELETE
-	Path   string `json:"path"`   // Fiber-style path: /v1/cmi/:job_id/request-policy-single-cmi
-	File   string `json:"file"`   // path สัมพัทธ์จาก mockdata/: cmi/get_policy_success.json
+	Method  string `json:"method"`            // HTTP method: GET, POST, PUT, DELETE
+	Path    string `json:"path"`              // Fiber-style path: /v1/cmi/:job_id/request-policy-single-cmi
+	File    string `json:"file"`              // path สัมพัทธ์จาก mockdata/: cmi/get_policy_success.json
+	Enabled *bool  `json:"enabled,omitempty"` // เปิด/ปิดรายตัว (default: true ถ้าไม่ระบุ)
+}
+
+// isEnabled returns true if the route is enabled.
+// ถ้าไม่ระบุ enabled → default เป็น true (backward compatible)
+func (r MockRoute) isEnabled() bool {
+	return r.Enabled == nil || *r.Enabled
 }
 
 // ─── Config ──────────────────────────────────────────────────────
@@ -66,6 +73,9 @@ func Mock(cfg MockConfig) fiber.Handler {
 		reqPath := c.Path()
 
 		for _, r := range routes {
+			if !r.isEnabled() {
+				continue
+			}
 			if !strings.EqualFold(method, r.Method) {
 				continue
 			}
@@ -109,7 +119,17 @@ func loadMockRoutes(path string) []MockRoute {
 		return nil
 	}
 
-	log.L().Info().Int("count", len(routes)).Str("file", path).Msg("mock: loaded routes")
+	active := 0
+	for _, r := range routes {
+		if r.isEnabled() {
+			active++
+		}
+	}
+	log.L().Info().
+		Int("total", len(routes)).
+		Int("active", active).
+		Str("file", path).
+		Msg("mock: loaded routes")
 	return routes
 }
 
