@@ -151,6 +151,17 @@ func SwaggerRow(isEnabled bool, basePath string) Row {
 	return Row{Label: "Swagger", Value: enabled(basePath + "/swagger")}
 }
 
+func MockRow(isEnabled bool, active, total int) Row {
+	if !isEnabled {
+		return Row{Label: "Mock", Value: disabled("disabled")}
+	}
+	detail := fmt.Sprintf("%d/%d routes", active, total)
+	if active == total {
+		return Row{Label: "Mock", Value: enabled(detail)}
+	}
+	return Row{Label: "Mock", Value: yellow("⚠") + " " + detail}
+}
+
 // ─────────────────────────────────────────────────────────────
 // Runtime / Build helpers
 // ─────────────────────────────────────────────────────────────

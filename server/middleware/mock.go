@@ -133,6 +133,28 @@ func loadMockRoutes(path string) []MockRoute {
 	return routes
 }
 
+// CountMockRoutes reads routes.json and returns the number of active and total routes.
+// Use this for banner display — no logging, no side effects.
+func CountMockRoutes(routesFile string) (active, total int) {
+	data, err := os.ReadFile(routesFile)
+	if err != nil {
+		return 0, 0
+	}
+
+	var routes []MockRoute
+	if err := json.Unmarshal(data, &routes); err != nil {
+		return 0, 0
+	}
+
+	total = len(routes)
+	for _, r := range routes {
+		if r.isEnabled() {
+			active++
+		}
+	}
+	return active, total
+}
+
 // readMockFile reads and caches a mock JSON file.
 func readMockFile(mu *sync.RWMutex, cache map[string][]byte, baseDir, file string) ([]byte, error) {
 	// ป้องกัน path traversal
