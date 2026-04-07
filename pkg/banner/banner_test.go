@@ -522,6 +522,36 @@ func TestSectionRow(t *testing.T) {
 	}
 }
 
+func TestMockRow_Disabled(t *testing.T) {
+	r := MockRow(false, 0, 0)
+	if r.Label != "Mock" {
+		t.Errorf("MockRow label = %q, want Mock", r.Label)
+	}
+	if !strings.Contains(r.Value, "disabled") {
+		t.Errorf("MockRow disabled value = %q, want 'disabled'", r.Value)
+	}
+}
+
+func TestMockRow_AllActive(t *testing.T) {
+	r := MockRow(true, 6, 6)
+	if !strings.Contains(r.Value, "6/6 routes") {
+		t.Errorf("MockRow all-active value = %q, want '6/6 routes'", r.Value)
+	}
+	if !strings.Contains(r.Value, "✔") {
+		t.Errorf("MockRow all-active value = %q, want ✔ icon", r.Value)
+	}
+}
+
+func TestMockRow_Partial(t *testing.T) {
+	r := MockRow(true, 4, 6)
+	if !strings.Contains(r.Value, "4/6 routes") {
+		t.Errorf("MockRow partial value = %q, want '4/6 routes'", r.Value)
+	}
+	if !strings.Contains(r.Value, "⚠") {
+		t.Errorf("MockRow partial value = %q, want ⚠ icon", r.Value)
+	}
+}
+
 func TestAlignment_WithSections(t *testing.T) {
 	useColor = false
 	defer func() { useColor = true }()
