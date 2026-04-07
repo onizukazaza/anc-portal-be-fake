@@ -74,6 +74,7 @@ import (
 	"github.com/onizukazaza/anc-portal-be-fake/pkg/log"
 	appOtel "github.com/onizukazaza/anc-portal-be-fake/pkg/otel"
 	"github.com/onizukazaza/anc-portal-be-fake/server"
+	mw "github.com/onizukazaza/anc-portal-be-fake/server/middleware"
 )
 
 func main() {
@@ -214,6 +215,10 @@ func main() {
 		banner.SwaggerRow(cfg.Swagger.Enabled, cfg.Swagger.BasePath),
 		banner.ServerRow(cfg.Server.Timeout, cfg.Server.BodyLimit),
 	)
+
+	// >> Mock status
+	mockActive, mockTotal := mw.CountMockRoutes(cfg.Mock.RoutesFile)
+	bannerRows = append(bannerRows, banner.MockRow(cfg.Mock.Enabled, mockActive, mockTotal))
 	banner.Print(banner.Options{
 		AppName:  "ANC Portal API",
 		Version:  "1.0.0",
