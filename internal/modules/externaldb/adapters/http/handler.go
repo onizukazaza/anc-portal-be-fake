@@ -5,20 +5,20 @@ import (
 
 	appOtel "github.com/onizukazaza/anc-portal-be-fake/pkg/otel"
 
-	"github.com/onizukazaza/anc-portal-be-fake/internal/modules/externaldb/app"
+	"github.com/onizukazaza/anc-portal-be-fake/internal/modules/externaldb/ports"
 	"github.com/onizukazaza/anc-portal-be-fake/internal/shared/dto"
 	"github.com/onizukazaza/anc-portal-be-fake/internal/shared/enum"
 )
 
 type Handler struct {
-	service *app.Service
+	service ports.ExternalDBService
 }
 
-func NewHandler(service *app.Service) *Handler {
+func NewHandler(service ports.ExternalDBService) *Handler {
 	return &Handler{service: service}
 }
 
-func NewExternalDBController(service *app.Service) ExternalDBController {
+func NewExternalDBController(service ports.ExternalDBService) ports.ExternalDBController {
 	return &Handler{service: service}
 }
 
