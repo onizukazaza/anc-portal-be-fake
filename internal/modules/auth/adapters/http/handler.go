@@ -8,12 +8,13 @@ import (
 	appOtel "github.com/onizukazaza/anc-portal-be-fake/pkg/otel"
 
 	"github.com/onizukazaza/anc-portal-be-fake/internal/modules/auth/app"
+	"github.com/onizukazaza/anc-portal-be-fake/internal/modules/auth/ports"
 	"github.com/onizukazaza/anc-portal-be-fake/internal/shared/dto"
 	"github.com/onizukazaza/anc-portal-be-fake/internal/shared/validator"
 )
 
 type Handler struct {
-	service *app.Service
+	service ports.AuthService
 }
 
 type loginRequest struct {
@@ -21,11 +22,11 @@ type loginRequest struct {
 	Password string `json:"password" validate:"required" example:"secret123"`
 }
 
-func NewHandler(service *app.Service) *Handler {
+func NewHandler(service ports.AuthService) *Handler {
 	return &Handler{service: service}
 }
 
-func NewAuthController(service *app.Service) AuthController {
+func NewAuthController(service ports.AuthService) ports.AuthController {
 	return &Handler{service: service}
 }
 

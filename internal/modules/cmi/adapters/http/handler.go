@@ -10,19 +10,20 @@ import (
 	appOtel "github.com/onizukazaza/anc-portal-be-fake/pkg/otel"
 
 	"github.com/onizukazaza/anc-portal-be-fake/internal/modules/cmi/app"
+	"github.com/onizukazaza/anc-portal-be-fake/internal/modules/cmi/ports"
 	"github.com/onizukazaza/anc-portal-be-fake/internal/shared/dto"
 	"github.com/onizukazaza/anc-portal-be-fake/pkg/log"
 )
 
 type Handler struct {
-	service *app.Service
+	service ports.CMIPolicyService
 }
 
-func NewHandler(service *app.Service) *Handler {
+func NewHandler(service ports.CMIPolicyService) *Handler {
 	return &Handler{service: service}
 }
 
-func NewCMIController(service *app.Service) CMIController {
+func NewCMIController(service ports.CMIPolicyService) ports.CMIController {
 	return &Handler{service: service}
 }
 
