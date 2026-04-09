@@ -8,19 +8,20 @@ import (
 	appOtel "github.com/onizukazaza/anc-portal-be-fake/pkg/otel"
 
 	"github.com/onizukazaza/anc-portal-be-fake/internal/modules/quotation/app"
+	"github.com/onizukazaza/anc-portal-be-fake/internal/modules/quotation/ports"
 	"github.com/onizukazaza/anc-portal-be-fake/internal/shared/dto"
 	"github.com/onizukazaza/anc-portal-be-fake/internal/shared/pagination"
 )
 
 type Handler struct {
-	service *app.Service
+	service ports.QuotationService
 }
 
-func NewHandler(service *app.Service) *Handler {
+func NewHandler(service ports.QuotationService) *Handler {
 	return &Handler{service: service}
 }
 
-func NewQuotationController(service *app.Service) QuotationController {
+func NewQuotationController(service ports.QuotationService) ports.QuotationController {
 	return &Handler{service: service}
 }
 

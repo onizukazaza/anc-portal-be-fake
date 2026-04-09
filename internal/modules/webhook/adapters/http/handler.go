@@ -8,21 +8,22 @@ import (
 	appOtel "github.com/onizukazaza/anc-portal-be-fake/pkg/otel"
 
 	"github.com/onizukazaza/anc-portal-be-fake/internal/modules/webhook/app"
+	"github.com/onizukazaza/anc-portal-be-fake/internal/modules/webhook/ports"
 	"github.com/onizukazaza/anc-portal-be-fake/internal/shared/dto"
 )
 
 // Handler implements WebhookController.
 type Handler struct {
-	service *app.Service
+	service ports.WebhookService
 }
 
 // NewHandler creates a new webhook handler.
-func NewHandler(service *app.Service) *Handler {
+func NewHandler(service ports.WebhookService) *Handler {
 	return &Handler{service: service}
 }
 
 // NewWebhookController creates the controller interface.
-func NewWebhookController(service *app.Service) WebhookController {
+func NewWebhookController(service ports.WebhookService) ports.WebhookController {
 	return &Handler{service: service}
 }
 

@@ -1,4 +1,4 @@
-package http
+package ports
 
 import "github.com/gofiber/fiber/v2"
 
